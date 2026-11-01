@@ -12,16 +12,14 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
-  group: github-pages
+  group: novaplayhost-static-publish
   cancel-in-progress: false
 
 jobs:
-  build:
+  build-and-publish:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -32,26 +30,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y unar
 
-      - name: Prepare all site files
+      - name: Extract and prepare every site
         run: python3 scripts/prepare_pages.py
 
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v4
+      - name: Publish static website to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: public
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-# Trigger fresh deployment after enabling GitHub Pages source.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          publish_branch: gh-pages
+          force_orphan: true
+          enable_jekyll: false
+          commit_message: "Publish NovaPlayHost sites: ${{ github.sha }}"
