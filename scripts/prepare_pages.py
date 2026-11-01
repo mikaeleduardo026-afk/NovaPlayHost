@@ -49,24 +49,64 @@ def copy_archive(source: Path) -> list[Path]:
     return copied
 
 def classify(path: Path) -> str | None:
-    rel = path.relative_to(PUBLIC).as_posix().lower()
+    # Legal pages and policy documents must never be picked as a product landing page.
+    stem = path.stem.lower().replace("_", "-")
+    rel_parts = [part.lower().replace("_", "-") for part in path.relative_to(PUBLIC).parts]
+    legal_stems = {"legal", "termos", "terms", "privacidade", "privacy", "reembolso", "refund", "cookies", "politica", "policy"}
+    if stem in legal_stems or any(part in legal_stems for part in rel_parts[:-1]):
+        return None
+
+    # Prefer the actual directory name: the archive preserves the separate project folders.
+    aliases = {
+        "lumora": "lumora",
+        "scriptlab": "scriptlab",
+        "script-lab": "scriptlab",
+        "mta-asset-viewer": "mta-asset-viewer",
+        "mtaasset": "mta-asset-viewer",
+        "asset-viewer": "mta-asset-viewer",
+        "token-generator": "token-generator",
+        "gerador-de-tokens": "token-generator",
+    }
+    for part in rel_parts[:-1]:
+        if part in aliases:
+            return aliases[part]
+
+    # Root-level HTML files are identified using their filename and <title>/<h1>,
+    # never footer links or legal-page body text.
+    filename = stem
+    name_aliases = {
+        "lumora": "lumora",
+        "lumora-site": "lumora",
+        "scriptlab": "scriptlab",
+        "script-lab": "scriptlab",
+        "mtaasset": "mta-asset-viewer",
+        "mta-asset-viewer": "mta-asset-viewer",
+        "asset-viewer": "mta-asset-viewer",
+        "token": "token-generator",
+        "tokens": "token-generator",
+        "gerador-de-tokens": "token-generator",
+        "token-generator": "token-generator",
+    }
+    if filename in name_aliases:
+        return name_aliases[filename]
+
     try:
-        content = path.read_text("utf-8", errors="ignore")[:16000].lower()
+        content = path.read_text("utf-8", errors="ignore")[:24000].lower()
     except OSError:
-        content = ""
+        return None
     title_match = re.search(r"<title[^>]*>(.*?)</title>", content, re.I | re.S)
-    title = re.sub(r"\s+", " ", title_match.group(1)).strip() if title_match else ""
-    hay = f"{rel} {title} {content[:6000]}"
-    if "token" in hay and ("gerador" in hay or "generator" in hay or "token generator" in hay):
-        return "token-generator"
-    if "gerador-de-tokens" in rel:
-        return "token-generator"
-    if "asset viewer" in hay or "asset-viewer" in hay or "mtaasset" in hay or ("viewer" in hay and "mta" in hay):
+    title = re.sub(r"\\s+", " ", title_match.group(1)).strip() if title_match else ""
+    heading_match = re.search(r"<h1[^>]*>(.*?)</h1>", content, re.I | re.S)
+    heading = re.sub(r"<[^>]+>", " ", heading_match.group(1)).strip() if heading_match else ""
+    identity = f"{title} {heading}".lower()
+    if "mta asset viewer" in identity or "mta:sa asset viewer" in identity:
         return "mta-asset-viewer"
-    if "lumora" in hay:
-        return "lumora"
-    if "scriptlab" in hay or "script lab" in hay:
+    if "scriptlab" in identity or "script lab" in identity:
         return "scriptlab"
+    if "lumora" in identity:
+        return "lumora"
+    if "gerador de tokens" in identity or "token generator" in identity:
+        return "token-generator"
     return None
 
 def rel_url(path: Path) -> str:
