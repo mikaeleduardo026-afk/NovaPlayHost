@@ -1,0 +1,2188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MTA Asset Viewer</title>
+<style>
+:root {
+  --site-primary: #5578ff;
+  --site-secondary: #17233c;
+  --site-background: #080d18;
+  --site-on-primary: #ffffff;
+  --site-on-secondary: #e7edff;
+  --site-on-background: #edf2ff;
+  --site-font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --site-font-heading: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --site-heading-scale: 1;
+  --site-spacing-scale: 1;
+  --site-radius-scale: 1;
+  --site-decoration-opacity: 1;
+  --panel: light-dark(#ffffff, #111a2a);
+  --panel-2: light-dark(#f4f6fb, #0d1524);
+  --panel-3: light-dark(#e9edf6, #18253a);
+  --text: light-dark(#17233b, #edf2ff);
+  --muted: light-dark(#69758b, #8998b4);
+  --line: light-dark(#dce2ee, #26344c);
+  --accent: var(--site-primary);
+  --good: #4bd5a1;
+  --warn: #e7b65e;
+  --bad: #fb737d;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body { font-family: var(--site-font-body); background: var(--site-background); color: var(--site-on-background); }
+button, input { font: inherit; }
+button { cursor: pointer; }
+#app {
+  min-height: 100vh;
+  width: 100%;
+  border-radius: 0;
+  background: var(--site-background);
+  color: var(--site-on-background);
+  padding: calc(22px * var(--site-spacing-scale));
+  overflow: hidden;
+  position: relative;
+}
+#app::before {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  width: 540px;
+  height: 540px;
+  top: -360px;
+  right: -130px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--site-primary) 26%, transparent), transparent 68%);
+  opacity: var(--site-decoration-opacity);
+}
+.shell { max-width: 1600px; margin: 0 auto; position: relative; z-index: 1; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 24px; }
+.brand { display: flex; align-items: center; gap: 13px; }
+.brand-mark { width: 42px; height: 42px; border-radius: calc(13px * var(--site-radius-scale)); display: grid; place-items: center; color: var(--site-on-primary); background: linear-gradient(145deg, var(--site-primary), #8f68ff); box-shadow: 0 9px 28px #5578ff40; }
+.brand-mark svg { width: 22px; height: 22px; }
+.brand-name { font-size: 13px; font-weight: 850; letter-spacing: .16em; }
+.brand-sub { color: var(--muted); font-size: 10px; margin-top: 4px; letter-spacing: .12em; }
+.top-meta { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 11px; letter-spacing: .08em; }
+.pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 4px #4bd5a11b; }
+.heading-row { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
+.eyebrow { color: var(--accent); font-size: 10px; font-weight: 850; letter-spacing: .18em; text-transform: uppercase; margin-bottom: 8px; }
+h1 { font-family: var(--site-font-heading); font-size: calc(30px * var(--site-heading-scale)); line-height: 1.08; letter-spacing: -.04em; margin: 0; color: var(--site-on-background); }
+.heading-copy { color: var(--muted); font-size: 12px; margin-top: 8px; line-height: 1.5; }
+.mode-switch { display: flex; align-items: center; padding: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: calc(13px * var(--site-radius-scale)); gap: 4px; }
+.mode-btn { border: 0; background: transparent; color: var(--muted); border-radius: calc(9px * var(--site-radius-scale)); padding: 10px 16px; font-size: 11px; font-weight: 800; letter-spacing: .06em; transition: .18s ease; }
+.mode-btn.active { color: white; background: var(--site-primary); box-shadow: 0 5px 16px #5578ff38; }
+.workspace { display: grid; grid-template-columns: 306px minmax(0, 1fr); gap: 16px; align-items: stretch; }
+.side { display: flex; flex-direction: column; gap: 14px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: calc(17px * var(--site-radius-scale)); overflow: hidden; }
+.card-head { padding: 15px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); }
+.card-title { font-size: 11px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; color: var(--text); }
+.step { color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .1em; }
+.card-body { padding: 15px; }
+.file-drop { border: 1px dashed var(--line); border-radius: calc(12px * var(--site-radius-scale)); background: var(--panel-2); padding: 16px 13px; transition: .18s ease; cursor: pointer; outline: none; }
+.file-drop:hover, .file-drop.dragover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--panel-2)); }
+.drop-top { display: flex; align-items: flex-start; gap: 11px; }
+.file-icon { width: 34px; height: 34px; flex: 0 0 auto; display: grid; place-items: center; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 10px; }
+.file-icon svg { width: 18px; height: 18px; }
+.drop-copy { min-width: 0; flex: 1; }
+.drop-title { font-size: 12px; font-weight: 800; color: var(--text); }
+.drop-desc { color: var(--muted); font-size: 10px; line-height: 1.45; margin-top: 4px; }
+.file-name { color: var(--text); font-size: 10px; font-weight: 750; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 12px; }
+.file-size { color: var(--muted); font-size: 9px; margin-top: 3px; }
+.file-state { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .1em; margin-top: 9px; }
+.state-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+.file-state.ready { color: var(--good); }
+.file-state.ready .state-dot { background: var(--good); }
+.file-state.error { color: var(--bad); }
+.file-state.error .state-dot { background: var(--bad); }
+.pick-hint { border: 1px solid var(--line); margin-top: 9px; border-radius: 8px; padding: 7px 9px; text-align: center; color: var(--muted); font-size: 9px; font-weight: 750; letter-spacing: .05em; }
+.hidden-input { display: none; }
+.file-card + .file-card { margin-top: 12px; }
+.pair-note { display: flex; gap: 9px; align-items: flex-start; padding: 11px 12px; background: var(--panel-2); border-radius: 10px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.pair-note svg { color: var(--accent); width: 15px; height: 15px; flex: 0 0 auto; margin-top: 1px; }
+.viewer-card { min-width: 0; display: flex; flex-direction: column; }
+.viewer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 17px; border-bottom: 1px solid var(--line); }
+.viewer-title-wrap { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.viewer-live { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 6px; background: #4bd5a114; color: var(--good); font-size: 9px; font-weight: 850; letter-spacing: .12em; }
+.viewer-live::before { content:""; width: 5px; height: 5px; background: currentColor; border-radius: 50%; }
+.viewer-actions { display: flex; align-items: center; gap: 7px; }
+.tool-btn { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--line); color: var(--muted); background: var(--panel-2); display: grid; place-items: center; transition: .18s ease; }
+.tool-btn:hover { color: var(--text); border-color: var(--accent); }
+.tool-btn svg { width: 15px; height: 15px; }
+.viewport-wrap { position: relative; min-height: 480px; flex: 1; overflow: hidden; background: #0a1220; }
+#viewport { display: block; width: 100%; height: 100%; min-height: 480px; touch-action: none; cursor: grab; }
+#viewport.dragging { cursor: grabbing; }
+.viewport-grid { position: absolute; inset: 0; pointer-events: none; opacity: .28; background-image: linear-gradient(#263a5a 1px, transparent 1px), linear-gradient(90deg, #263a5a 1px, transparent 1px); background-size: 42px 42px; mask-image: linear-gradient(to bottom, transparent, black 25%, black 75%, transparent); }
+.viewport-glow { position: absolute; pointer-events: none; left: 50%; top: 47%; width: 360px; height: 240px; transform: translate(-50%,-50%); background: radial-gradient(ellipse, #446bba19, transparent 68%); }
+.empty-state { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; text-align: center; padding: 25px; }
+.empty-icon { width: 62px; height: 62px; border: 1px solid #314261; border-radius: 19px; display: grid; place-items: center; color: #8ca8e8; background: #1828448f; box-shadow: 0 15px 50px #0005; }
+.empty-icon svg { width: 28px; height: 28px; }
+.empty-title { color: #e8efff; font-size: 14px; font-weight: 800; margin-top: 18px; }
+.empty-copy { max-width: 300px; color: #8494b1; font-size: 10px; line-height: 1.6; margin-top: 8px; }
+.viewer-hint { position: absolute; left: 15px; bottom: 14px; display: flex; flex-wrap: wrap; gap: 6px; pointer-events: none; }
+.hint-chip { padding: 6px 8px; border: 1px solid #34415a; color: #9ba9c1; background: #111c2dcc; border-radius: 7px; font-size: 9px; letter-spacing: .03em; }
+.hint-chip b { color: #e4ebfa; }
+.model-info { position: absolute; top: 13px; left: 14px; display: none; gap: 6px; }
+.model-info.visible { display: flex; }
+.info-chip { padding: 6px 9px; color: #b5c5e3; background: #101b2bd9; border: 1px solid #34415a; border-radius: 7px; font-size: 9px; }
+.bottom-info { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); border-top: 1px solid var(--line); background: var(--panel); }
+.metric { padding: 13px 16px; min-width: 0; }
+.metric + .metric { border-left: 1px solid var(--line); }
+.metric-label { color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.metric-value { color: var(--text); font-size: 14px; font-weight: 850; margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.textures-card { margin-top: 15px; }
+.texture-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(102px, 1fr)); gap: 9px; }
+.texture-item { min-width: 0; padding: 8px; border: 1px solid var(--line); background: var(--panel-2); border-radius: 10px; }
+.texture-thumb { width: 100%; aspect-ratio: 1.35; border-radius: 6px; background: repeating-conic-gradient(#27344b 0% 25%, #1d293d 0% 50%) 50%/14px 14px; overflow: hidden; display: grid; place-items: center; }
+.texture-thumb canvas { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; image-rendering: auto; }
+.texture-name { color: var(--text); font-size: 9px; font-weight: 800; margin-top: 7px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.texture-size { color: var(--muted); font-size: 8px; margin-top: 3px; }
+.textures-empty { color: var(--muted); font-size: 10px; padding: 8px 0; }
+.status-line { min-height: 34px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 9px; padding: 0 15px; border-top: 1px solid var(--line); }
+.status-message { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.status-message span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.status-mark { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); flex: 0 0 auto; }
+.status-message.good .status-mark { background: var(--good); }
+.status-message.warn .status-mark { background: var(--warn); }
+.status-message.error .status-mark { background: var(--bad); }
+.footer-note { color: var(--muted); font-size: 9px; text-align: center; margin-top: 15px; letter-spacing: .03em; }
+
+.converter-card { margin-bottom: 16px; }
+.converter-body { display: grid; grid-template-columns: minmax(260px, 1.5fr) minmax(220px, 1fr); gap: 14px; align-items: stretch; }
+.converter-drop { min-height: 114px; border: 1px dashed var(--line); border-radius: calc(12px * var(--site-radius-scale)); background: var(--panel-2); padding: 15px; display: flex; flex-direction: column; justify-content: center; cursor: pointer; outline: none; transition: .18s ease; }
+.converter-drop:hover, .converter-drop.dragover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--panel-2)); }
+.converter-drop-title { color: var(--text); font-size: 12px; font-weight: 850; }
+.converter-drop-copy { color: var(--muted); font-size: 10px; line-height: 1.5; margin-top: 5px; }
+.converter-file-name { color: var(--text); font-size: 10px; font-weight: 800; margin-top: 10px; overflow-wrap: anywhere; }
+.converter-file-meta { color: var(--muted); font-size: 9px; margin-top: 3px; }
+.converter-controls { display: flex; flex-direction: column; gap: 9px; }
+.converter-field { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; background: var(--panel-2); }
+.converter-field label { color: var(--muted); font-size: 10px; font-weight: 750; }
+.converter-field select, .converter-field input { max-width: 135px; min-width: 90px; border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; background: var(--panel); color: var(--text); font-size: 10px; }
+.converter-button { min-height: 37px; border: 0; border-radius: 9px; background: var(--site-primary); color: var(--site-on-primary); font-size: 10px; font-weight: 850; letter-spacing: .06em; padding: 9px 13px; transition: .18s ease; }
+.converter-button:hover:not(:disabled) { filter: brightness(1.08); }
+.converter-button:disabled { opacity: .45; cursor: not-allowed; }
+.converter-outputs { display: flex; flex-wrap: wrap; gap: 7px; }
+.converter-download { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--panel-2); color: var(--text); font-size: 9px; font-weight: 800; }
+.converter-download:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.converter-download:disabled { opacity: .4; cursor: not-allowed; }
+.converter-status { color: var(--muted); font-size: 10px; line-height: 1.5; min-height: 30px; padding-top: 2px; }
+.converter-warning { grid-column: 1 / -1; color: var(--muted); font-size: 9px; line-height: 1.55; border-top: 1px solid var(--line); padding-top: 10px; }
+@media (max-width: 760px) { .converter-body { grid-template-columns: 1fr; } }
+
+@media (max-width: 980px) {
+  #app { padding: 17px; }
+  .workspace { grid-template-columns: 270px minmax(0,1fr); }
+  .viewport-wrap, #viewport { min-height: 420px; }
+}
+@media (max-width: 760px) {
+  .heading-row { align-items: flex-start; flex-direction: column; }
+  .workspace { grid-template-columns: 1fr; }
+  .side { display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; }
+  .side .pair-card { grid-column: 1 / -1; }
+  .viewport-wrap, #viewport { min-height: 380px; }
+  .top-meta { display: none; }
+}
+@media (max-width: 520px) {
+  #app { padding: 13px; }
+  .side { display: flex; }
+  .bottom-info { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .metric:nth-child(3) { border-left: 0; border-top: 1px solid var(--line); }
+  .metric:nth-child(4) { border-top: 1px solid var(--line); }
+  .viewer-head { padding: 12px; }
+  .viewer-actions { gap: 4px; }
+  .viewport-wrap, #viewport { min-height: 330px; }
+  .mode-btn { padding: 9px 12px; }
+}
+</style>
+<style id="novaplayhost-brand-style">
+.nph-watermark{position:fixed;z-index:8;pointer-events:none;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-18deg);font:900 clamp(46px,10vw,116px)/1 system-ui,sans-serif;letter-spacing:.08em;white-space:nowrap;color:rgba(135,164,215,.035);text-shadow:0 1px 0 rgba(255,255,255,.015)}
+.nph-footer{position:relative;z-index:9;margin:48px 0 0;padding:34px 22px 20px;border-top:1px solid rgba(130,155,190,.22);background:rgba(8,15,28,.88);color:#dce7f7;font:14px/1.55 Inter,system-ui,-apple-system,Segoe UI,sans-serif;backdrop-filter:blur(12px)}
+.nph-footer *{box-sizing:border-box}.nph-footer-inner{max-width:1180px;margin:0 auto}.nph-footer-grid{display:grid;grid-template-columns:1.4fr repeat(4,minmax(120px,1fr));gap:25px}.nph-footer-brand strong{font-size:18px;letter-spacing:.09em;color:#fff}.nph-footer-brand p{max-width:290px;color:#9eafc7;font-size:12px;margin:9px 0 12px}.nph-footer-brand .nph-watermark-label{display:inline-block;color:#9bb5ff;font-weight:900;font-size:10px;letter-spacing:.2em;text-transform:uppercase}.nph-footer-col h3{margin:2px 0 12px;color:#fff;font-size:12px;letter-spacing:.1em;text-transform:uppercase}.nph-footer-col a{display:block;width:max-content;max-width:100%;margin:7px 0;color:#aebdd2;text-decoration:none;font-size:12px}.nph-footer-col a:hover{color:#fff;text-decoration:underline}.nph-footer-bottom{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;border-top:1px solid rgba(130,155,190,.18);margin-top:25px;padding-top:17px;color:#91a2ba;font-size:11px}.nph-footer-bottom strong{color:#dce7f7}.nph-footer-warning{margin-top:15px;padding:11px 13px;border-left:3px solid #d59a50;background:rgba(213,154,80,.08);color:#c7b99f;font-size:11px;border-radius:0 8px 8px 0}.nph-footer a:focus-visible{outline:2px solid #8eacff;outline-offset:3px}
+@media(max-width:900px){.nph-footer-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.nph-footer-brand{grid-column:1/-1}}
+@media(max-width:520px){.nph-footer-grid{grid-template-columns:1fr 1fr;gap:18px}.nph-footer-col h3{font-size:10px}.nph-footer-col a{font-size:11px}.nph-footer-bottom{display:block}.nph-footer-bottom span{display:block;margin:5px 0}}
+</style>
+<style id="nph-resource-builder-style">
+.nph-resource-builder{margin:0 0 22px}.nph-builder-body{display:grid;gap:15px}.nph-builder-intro{margin:0;color:var(--muted,#aab8cc);font-size:13px;line-height:1.65}.nph-builder-grid{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:12px}.nph-builder-grid input,.nph-builder-grid select{width:100%;min-height:42px;padding:10px 12px;background:var(--panel,#101a2b);color:var(--text,#eaf0fa);border:1px solid var(--line,#2a3b55);border-radius:9px;font:inherit}.nph-builder-files{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.nph-file-field{display:grid;gap:8px;padding:13px;border:1px dashed var(--line,#2a3b55);border-radius:11px;background:rgba(120,150,200,.035)}.nph-file-field>span{font-size:10px;font-weight:800;letter-spacing:.1em}.nph-file-field input{width:100%;font-size:11px}.nph-file-field small{color:var(--muted,#aab8cc);font-size:11px;overflow-wrap:anywhere}.nph-check{display:flex;align-items:center;gap:9px;color:var(--muted,#aab8cc);font-size:12px}.nph-check input{accent-color:#6f8fff}.nph-integrity-note{padding:12px 14px;background:rgba(66,145,111,.08);border-left:3px solid #4eaa83;border-radius:0 9px 9px 0;color:#abcdbd;font-size:11px;line-height:1.6}
+@media(max-width:720px){.nph-builder-grid,.nph-builder-files{grid-template-columns:1fr}}
+</style>
+<style id="nph-viewer-license-style">
+#app{display:none}.nph-license-gate{min-height:100vh;display:grid;place-items:center;padding:28px;background:radial-gradient(ellipse at 20% 10%,rgba(72,113,218,.2),transparent 42%),#080d18;color:#edf2ff;font:14px/1.6 Inter,system-ui,sans-serif}.nph-license-card{width:min(100%,540px);padding:30px;border:1px solid #263955;border-radius:20px;background:rgba(16,26,44,.96);box-shadow:0 24px 90px rgba(0,0,0,.4)}.nph-license-brand{font-weight:950;letter-spacing:.1em;color:#a9baff}.nph-license-brand span{display:block;margin-top:3px;color:#8495b0;font-size:9px;letter-spacing:.22em}.nph-license-eyebrow{margin-top:28px;color:#7f9dff;font-size:10px;font-weight:800;letter-spacing:.18em}.nph-license-card h1{margin:8px 0;font-size:clamp(27px,6vw,38px);line-height:1.1}.nph-license-card p,.nph-license-card small{color:#aab9cf}.nph-license-card textarea{display:block;width:100%;min-height:92px;margin:18px 0 10px;padding:13px;border:1px solid #344b6c;border-radius:10px;background:#0b1424;color:#f1f5ff;font:12px/1.6 ui-monospace,monospace;resize:vertical}.nph-license-card button{width:100%;padding:13px;border:0;border-radius:10px;background:#6e8dff;color:#fff;font-weight:900;letter-spacing:.08em;cursor:pointer}.nph-license-card button:disabled{opacity:.55;cursor:wait}#viewerLicenseStatus{min-height:24px;margin:12px 0;color:#bac9df;font-size:12px}.nph-license-card small{display:block;font-size:10px}
+</style>
+</head>
+<body>
+
+<section id="viewerLicenseGate" class="nph-license-gate">
+ <div class="nph-license-card">
+  <div class="nph-license-brand">NovaPlayHost <span>ASSET VIEWER</span></div>
+  <div class="nph-license-eyebrow">ACESSO POR LICENÇA</div>
+  <h1>Ative o MTA Asset Viewer</h1>
+  <p>Informe o token emitido para o produto <strong>MTA Asset Viewer</strong> no Gerador de Tokens da NovaPlayHost.</p>
+  <textarea id="viewerLicenseToken" rows="3" placeholder="Cole seu token SL2 aqui"></textarea>
+  <button id="viewerActivateLicense" type="button">VALIDAR E ATIVAR</button>
+  <div id="viewerLicenseStatus" role="status" aria-live="polite">A validação é feita localmente por assinatura digital.</div>
+  <small>O token deve pertencer ao MTA Asset Viewer. Tokens de Lumora ou ScriptLab não são aceitos.</small>
+ </div>
+</section>
+
+<div id="app">
+  <div class="shell">
+    <header class="topbar" id="viewerTop">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17.5 6.2 7.8A2.3 2.3 0 0 1 8.5 6h7a2.3 2.3 0 0 1 2.3 1.8l2.2 9.7H4Z"/><path d="M7 17.5v2m10-2v2M6 13h12M8.5 9.5h7"/></svg>
+        </div>
+        <div>
+          <div class="brand-name">MTA ASSET LAB</div>
+          <div class="brand-sub">RENDERWARE MODEL VIEWER</div>
+        </div>
+      </div>
+      <div class="top-meta"><span class="pulse"></span><span>VISUALIZADOR LOCAL</span><span>•</span><span>DFF / TXD</span></div>
+    </header>
+
+    <section class="heading-row">
+      <div>
+        <div class="eyebrow">IMPORTAÇÃO 3D</div>
+        <h1>Model Viewer</h1>
+        <div class="heading-copy">Carregue o modelo DFF e o pacote TXD para visualizar o asset em 3D.</div>
+      </div>
+      <div class="mode-switch" role="tablist" aria-label="Tipo de asset">
+        <button class="mode-btn active" id="vehicleMode" type="button" role="tab" aria-selected="true">VEÍCULOS</button>
+        <button class="mode-btn" id="skinMode" type="button" role="tab" aria-selected="false">SKINS</button>
+      </div>
+    </section>
+
+    <section class="card converter-card" id="mtaConverter">
+      <div class="card-head"><div class="card-title">Conversor para MTA:SA</div><div class="step">OBJ / FBX / GLB → DFF + TXD</div></div>
+      <div class="card-body converter-body">
+        <div>
+          <div class="converter-drop" id="sourceDrop" tabindex="0" role="button" aria-label="Selecionar modelo e arquivos auxiliares">
+            <div class="converter-drop-title">Importar modelo 3D</div>
+            <div class="converter-drop-copy">Selecione OBJ, FBX ou GLB. Para OBJ/FBX, inclua também os MTL e as imagens usadas pelos materiais.</div>
+            <div class="converter-file-name" id="sourceFileName">Nenhum modelo selecionado</div>
+            <div class="converter-file-meta" id="sourceFileMeta">Arquivos processados localmente no navegador</div>
+          </div>
+          <input class="hidden-input" id="sourceInput" type="file" multiple accept=".obj,.fbx,.glb,.mtl,.png,.jpg,.jpeg,.webp">
+        </div>
+        <div class="converter-controls">
+          <div class="converter-field"><label for="sourceAxis">Eixo vertical de origem</label><select id="sourceAxis"><option value="y" selected>Y (Blender / GLB)</option><option value="z">Z (Z-up)</option></select></div>
+          <div class="converter-field"><label for="sourceScale">Escala do modelo</label><input id="sourceScale" type="number" min="0.0001" max="10000" step="0.1" value="1"></div>
+          <button class="converter-button" id="convertSource" type="button">CONVERTER PARA DFF + TXD</button>
+          <div class="converter-status" id="convertStatus">Aguardando modelo 3D e arquivos auxiliares.</div>
+          <div class="converter-outputs">
+            <button class="converter-download" id="downloadDFF" type="button" disabled>BAIXAR DFF</button>
+            <button class="converter-download" id="downloadTXD" type="button" disabled>BAIXAR TXD</button>
+            <button class="converter-download" id="downloadBoth" type="button" disabled>BAIXAR OS DOIS</button>
+          </div>
+        </div>
+        <div class="converter-warning">Exporta malha estática, UVs, normais, materiais difusos e texturas. No FBX, é usado o primeiro material/textura difusa. Rig, animações, pivôs de peças, colisão COL e configuração de veículo não são convertidos; esses elementos precisam ser preparados separadamente para um veículo funcional no MTA.</div>
+      </div>
+    </section>
+
+    
+<section class="card nph-resource-builder" id="mtaResourceBuilder">
+ <div class="card-head"><div class="card-title">Empacotador de Resource MTA:SA</div><div class="step">DFF + TXD → RESOURCE ZIP</div></div>
+ <div class="card-body nph-builder-body">
+  <p class="nph-builder-intro">Use arquivos DFF/TXD que já existem no GTA:SA. O Viewer não converte nem regrava esses arquivos nesta etapa: ele copia os bytes originais para um resource e cria somente os arquivos de configuração do MTA.</p>
+  <div class="nph-builder-grid">
+   <div class="converter-field"><label for="packageType">TIPO DE MODELO</label><select id="packageType"><option value="vehicle">Veículo</option><option value="skin">Skin / Ped</option></select></div>
+   <div class="converter-field"><label for="packageModelId" id="packageModelLabel">ID DO VEÍCULO (400–611)</label><input id="packageModelId" type="number" min="400" max="611" step="1" value="411"></div>
+   <div class="converter-field"><label for="packageResourceName">NOME DO RESOURCE</label><input id="packageResourceName" type="text" maxlength="40" value="novaplay_vehicle_411" placeholder="ex.: novaplay_vehicle_411"></div>
+  </div>
+  <div class="nph-builder-files">
+   <label class="nph-file-field"><span>DFF · OBRIGATÓRIO</span><input id="packageDff" type="file" accept=".dff,application/octet-stream"><small id="packageDffName">Nenhum DFF selecionado</small></label>
+   <label class="nph-file-field"><span>TXD · RECOMENDADO</span><input id="packageTxd" type="file" accept=".txd,application/octet-stream"><small id="packageTxdName">Nenhum TXD selecionado</small></label>
+   <label class="nph-file-field"><span>COL · OPCIONAL</span><input id="packageCol" type="file" accept=".col,application/octet-stream"><small id="packageColName">Nenhum COL selecionado</small></label>
+  </div>
+  <label class="nph-check"><input id="packageAlpha" type="checkbox"><span>Ativar transparência alfa no DFF (ex.: vidros)</span></label>
+  <button class="converter-button" id="buildMtaResource" type="button">GERAR RESOURCE MTA:SA (.ZIP)</button>
+  <div id="packageStatus" class="converter-status" role="status">Selecione o DFF, informe o ID e gere o resource.</div>
+  <div class="nph-integrity-note">Integridade: DFF, TXD e COL são incluídos sem edição, conversão, recompressão ou alteração de conteúdo. O ZIP contém esses mesmos bytes, além de meta.xml e client.lua novos. A compatibilidade do modelo depende da integridade e dos requisitos do arquivo original.</div>
+ </div>
+</section>
+
+<main class="workspace">
+      <aside class="side">
+        <section class="card">
+          <div class="card-head"><div class="card-title">Arquivos do modelo</div><div class="step">01 / 02</div></div>
+          <div class="card-body">
+            <div class="file-card">
+              <div class="file-drop" id="dffDrop" tabindex="0" role="button" aria-label="Selecionar arquivo DFF">
+                <div class="drop-top">
+                  <div class="file-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v6h5M9 14h7M9 17h5"/></svg></div>
+                  <div class="drop-copy"><div class="drop-title">Modelo 3D · DFF</div><div class="drop-desc">Geometria, vértices, materiais e UVs</div></div>
+                </div>
+                <div class="file-name" id="dffName">Nenhum arquivo selecionado</div>
+                <div class="file-size" id="dffSize">Formato .dff</div>
+                <div class="file-state" id="dffState"><span class="state-dot"></span><span>AGUARDANDO ARQUIVO</span></div>
+                <div class="pick-hint">CLIQUE OU ARRASTE O DFF AQUI</div>
+              </div>
+              <input class="hidden-input" id="dffInput" type="file" accept=".dff,application/octet-stream">
+            </div>
+            <div class="file-card">
+              <div class="file-drop" id="txdDrop" tabindex="0" role="button" aria-label="Selecionar arquivo TXD">
+                <div class="drop-top">
+                  <div class="file-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="m5 17 5-5 3 3 2-2 4 4"/></svg></div>
+                  <div class="drop-copy"><div class="drop-title">Texturas · TXD</div><div class="drop-desc">Dicionário de texturas do RenderWare</div></div>
+                </div>
+                <div class="file-name" id="txdName">Nenhum arquivo selecionado</div>
+                <div class="file-size" id="txdSize">Formato .txd</div>
+                <div class="file-state" id="txdState"><span class="state-dot"></span><span>AGUARDANDO ARQUIVO</span></div>
+                <div class="pick-hint">CLIQUE OU ARRASTE O TXD AQUI</div>
+              </div>
+              <input class="hidden-input" id="txdInput" type="file" accept=".txd,application/octet-stream">
+            </div>
+          </div>
+        </section>
+
+        <section class="card pair-card">
+          <div class="card-head"><div class="card-title">Associação</div><div class="step">DFF + TXD</div></div>
+          <div class="card-body">
+            <div class="pair-note">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 10v6m0-9h.01"/></svg>
+              <span>O DFF identifica as texturas usadas pelos materiais. O TXD correspondente fornece as imagens para aplicar no modelo 3D. Você pode carregar os dois em qualquer ordem.</span>
+            </div>
+          </div>
+        </section>
+      </aside>
+
+      <section class="card viewer-card">
+        <div class="viewer-head">
+          <div class="viewer-title-wrap">
+            <div class="card-title">Visualização 3D</div>
+            <span class="viewer-live">LIVE VIEW</span>
+          </div>
+          <div class="viewer-actions">
+            <button class="tool-btn" id="resetView" type="button" title="Centralizar modelo" aria-label="Centralizar modelo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5m11-5v5h-5"/><path d="M8 8 4 4m12 4 4-4M8 16l-4 4m12-4 4 4"/></svg></button>
+          </div>
+        </div>
+        <div class="viewport-wrap" id="viewportWrap">
+          <canvas id="viewport" aria-label="Visualização tridimensional do modelo"></canvas>
+          <div class="viewport-grid"></div>
+          <div class="viewport-glow"></div>
+          <div class="model-info" id="modelInfo"><span class="info-chip" id="modelFileChip">MODEL.DFF</span><span class="info-chip" id="modelStateChip">TEXTURED</span></div>
+          <div class="empty-state" id="emptyState">
+            <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9m-4-16.5 8 4.5"/></svg></div>
+            <div class="empty-title">Nenhum modelo carregado</div>
+            <div class="empty-copy">Importe um arquivo DFF ao lado. Depois adicione o TXD correspondente para visualizar o modelo com as texturas originais.</div>
+          </div>
+          <div class="viewer-hint"><span class="hint-chip"><b>ARRASTAR</b> girar</span><span class="hint-chip"><b>SCROLL</b> zoom</span><span class="hint-chip"><b>BOTÃO DIREITO</b> mover</span></div>
+        </div>
+        <div class="bottom-info">
+          <div class="metric"><div class="metric-label">Vértices</div><div class="metric-value" id="verticesMetric">—</div></div>
+          <div class="metric"><div class="metric-label">Triângulos</div><div class="metric-value" id="trianglesMetric">—</div></div>
+          <div class="metric"><div class="metric-label">Materiais</div><div class="metric-value" id="materialsMetric">—</div></div>
+          <div class="metric"><div class="metric-label">Texturas TXD</div><div class="metric-value" id="texturesMetric">—</div></div>
+        </div>
+        <div class="status-line">
+          <div class="status-message" id="statusMessage"><span class="status-mark"></span><span id="statusText">Aguardando arquivos DFF e TXD.</span></div>
+          <span id="modeStatus">VEÍCULO</span>
+        </div>
+      </section>
+    </main>
+
+    <section class="card textures-card">
+      <div class="card-head"><div class="card-title">Texturas encontradas no TXD</div><div class="step" id="textureCountLabel">0 TEXTURAS</div></div>
+      <div class="card-body"><div class="texture-grid" id="textureGrid"><div class="textures-empty">As texturas do arquivo TXD aparecerão aqui.</div></div></div>
+    </section>
+    <div class="footer-note">Processamento local · DFF indexado · TXD D3D8/D3D9 · sem envio de arquivos</div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = (id) => document.getElementById(id);
+  const modes = {
+    vehicle: { dffFile: null, txdFile: null, model: null, txd: null },
+    skin: { dffFile: null, txdFile: null, model: null, txd: null }
+  };
+  let activeMode = 'vehicle';
+  let gl = null;
+  let program = null;
+  let glGroups = [];
+  let glGeometryBuffers = [];
+  let glTextureCache = new Map();
+  let rendererCaps = { uintIndices: false, s3tc: null };
+  let attribLocations = null;
+  let uniformLocations = null;
+  let textureObserver = null;
+  let drawPending = false;
+  let camera = { yaw: 0.72, pitch: 0.24, distance: 4, target: [0, 0, 0], radius: 1 };
+  let pointer = null;
+
+  const CHUNK = { STRUCT: 1, STRING: 2, EXTENSION: 3, TEXTURE: 6, MATERIAL: 7, MATERIAL_LIST: 8, FRAME_LIST: 14, GEOMETRY: 15, CLUMP: 16, ATOMIC: 20, TEXTURE_NATIVE: 21, TEXTURE_DICTIONARY: 22, GEOMETRY_LIST: 26, BIN_MESH: 1294 };
+  const GEOM = { TRISTRIP: 1, POSITIONS: 2, TEXTURED: 4, PRELIT: 8, NORMALS: 16, TEXTURED2: 128, NATIVE: 0x01000000 };
+
+  function activeState() { return modes[activeMode]; }
+  function fmtBytes(bytes) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+  function setStatus(message, kind = '') {
+    $('statusText').textContent = message;
+    $('statusMessage').className = `status-message ${kind}`;
+  }
+  function setFileState(prefix, file, state, label) {
+    $(prefix + 'Name').textContent = file ? file.name : 'Nenhum arquivo selecionado';
+    $(prefix + 'Size').textContent = file ? fmtBytes(file.size) : `Formato .${prefix}`;
+    const el = $(prefix + 'State');
+    el.className = `file-state ${state}`;
+    el.innerHTML = `<span class="state-dot"></span><span>${label}</span>`;
+  }
+  function readFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('Não foi possível ler o arquivo.'));
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  function chunkAt(view, offset, limit) {
+    if (offset + 12 > limit || offset + 12 > view.byteLength) throw new Error('Cabeçalho RenderWare incompleto.');
+    const id = view.getUint32(offset, true);
+    const size = view.getUint32(offset + 4, true);
+    const start = offset + 12;
+    const end = start + size;
+    if (end > limit || end > view.byteLength || size < 0) throw new Error('Tamanho de seção inválido no arquivo.');
+    return { id, start, end, size, version: view.getUint32(offset + 8, true), next: end };
+  }
+  function childChunks(view, parent) {
+    const out = [];
+    let pos = parent.start;
+    let guard = 0;
+    while (pos + 12 <= parent.end && guard++ < 200000) {
+      const child = chunkAt(view, pos, parent.end);
+      out.push(child);
+      if (child.next <= pos) throw new Error('Seção RenderWare com tamanho inválido.');
+      pos = child.next;
+    }
+    return out;
+  }
+  function findChild(view, parent, id) {
+    return childChunks(view, parent).find(c => c.id === id) || null;
+  }
+  function decodeString(bytes) {
+    let end = bytes.indexOf(0);
+    if (end < 0) end = bytes.length;
+    return new TextDecoder('utf-8').decode(bytes.subarray(0, end)).trim();
+  }
+  function safeU32(view, pos, fallback = 0) { return pos + 4 <= view.byteLength ? view.getUint32(pos, true) : fallback; }
+  function safeF32(view, pos, fallback = 0) { return pos + 4 <= view.byteLength ? view.getFloat32(pos, true) : fallback; }
+  function readFrameList(view, chunk) {
+    if (!chunk) return [];
+    const st = findChild(view, chunk, CHUNK.STRUCT);
+    if (!st || st.size < 4) return [];
+    let p = st.start;
+    const count = safeU32(view, p);
+    p += 4;
+    if (count > 10000 || p + count * 56 > st.end) throw new Error('Lista de frames DFF inválida.');
+    const frames = [];
+    for (let i = 0; i < count; i++) {
+      const right = [safeF32(view, p), safeF32(view, p + 4), safeF32(view, p + 8)];
+      const up = [safeF32(view, p + 12), safeF32(view, p + 16), safeF32(view, p + 20)];
+      const at = [safeF32(view, p + 24), safeF32(view, p + 28), safeF32(view, p + 32)];
+      const pos = [safeF32(view, p + 36), safeF32(view, p + 40), safeF32(view, p + 44)];
+      const parent = view.getInt32(p + 48, true);
+      frames.push({ right, up, at, pos, parent });
+      p += 56;
+    }
+    return frames;
+  }
+  function transformPoint(point, frame) {
+    const [x, y, z] = point;
+    return [
+      x * frame.right[0] + y * frame.up[0] + z * frame.at[0] + frame.pos[0],
+      x * frame.right[1] + y * frame.up[1] + z * frame.at[1] + frame.pos[1],
+      x * frame.right[2] + y * frame.up[2] + z * frame.at[2] + frame.pos[2]
+    ];
+  }
+  function applyFrame(point, frameIndex, frames) {
+    let out = point.slice();
+    let index = frameIndex;
+    let depth = 0;
+    while (index >= 0 && index < frames.length && depth++ < 64) {
+      out = transformPoint(out, frames[index]);
+      index = frames[index].parent;
+    }
+    return out;
+  }
+  function readMaterial(view, chunk) {
+    const st = findChild(view, chunk, CHUNK.STRUCT);
+    const material = { color: [220, 225, 238, 255], textureName: '' };
+    if (st && st.size >= 16) {
+      const p = st.start;
+      material.color = [view.getUint8(p + 4), view.getUint8(p + 5), view.getUint8(p + 6), view.getUint8(p + 7)];
+    }
+    const textureChunk = childChunks(view, chunk).find(c => c.id === CHUNK.TEXTURE);
+    if (textureChunk) {
+      const stringChunks = childChunks(view, textureChunk).filter(c => c.id === CHUNK.STRING);
+      if (stringChunks[0]) material.textureName = decodeString(new Uint8Array(view.buffer, stringChunks[0].start, stringChunks[0].size));
+    }
+    return material;
+  }
+  function readMaterialList(view, geometryChunk) {
+    if (!geometryChunk) return [{ color: [220, 225, 238, 255], textureName: '' }];
+    const chunk = childChunks(view, geometryChunk).find(c => c.id === CHUNK.MATERIAL_LIST);
+    if (!chunk) return [{ color: [220, 225, 238, 255], textureName: '' }];
+    const st = findChild(view, chunk, CHUNK.STRUCT);
+    const materialChunks = childChunks(view, chunk).filter(c => c.id === CHUNK.MATERIAL);
+    const parsed = materialChunks.map(c => readMaterial(view, c));
+    if (!st || st.size < 4) return parsed.length ? parsed : [{ color: [220, 225, 238, 255], textureName: '' }];
+    const p = st.start;
+    const count = safeU32(view, p);
+    if (count > 4096 || p + 4 + count * 4 > st.end) return parsed.length ? parsed : [{ color: [220, 225, 238, 255], textureName: '' }];
+    const refs = [];
+    for (let i = 0; i < count; i++) refs.push(view.getInt32(p + 4 + i * 4, true));
+    if (!refs.length) return parsed.length ? parsed : [{ color: [220, 225, 238, 255], textureName: '' }];
+    const result = [];
+    let nextNew = 0;
+    for (const ref of refs) {
+      if (ref === -1) result.push(parsed[nextNew++] || { color: [220, 225, 238, 255], textureName: '' });
+      else result.push(parsed[ref] || { color: [220, 225, 238, 255], textureName: '' });
+    }
+    return result.length ? result : [{ color: [220, 225, 238, 255], textureName: '' }];
+  }
+  function readBinMesh(view, geometryChunk) {
+    const ext = childChunks(view, geometryChunk).find(c => c.id === CHUNK.EXTENSION);
+    if (!ext) return null;
+    const plugin = childChunks(view, ext).find(c => c.id === CHUNK.BIN_MESH);
+    if (!plugin || plugin.size < 12) return null;
+    let p = plugin.start;
+    const flags = safeU32(view, p); p += 4;
+    const meshCount = safeU32(view, p); p += 4;
+    const totalIndices = safeU32(view, p); p += 4;
+    if (meshCount > 8192 || totalIndices > 20000000) return null;
+    const meshes = [];
+    for (let i = 0; i < meshCount; i++) {
+      if (p + 8 > plugin.end) break;
+      const count = safeU32(view, p); p += 4;
+      const material = safeU32(view, p); p += 4;
+      if (count > 20000000 || p + count * 4 > plugin.end) break;
+      const indices = [];
+      for (let j = 0; j < count; j++) { indices.push(safeU32(view, p)); p += 4; }
+      meshes.push({ material, indices, strip: (flags & 1) !== 0 });
+    }
+    return meshes.length ? meshes : null;
+  }
+  function stripToTriangles(indices) {
+    const out = [];
+    for (let i = 2; i < indices.length; i++) {
+      const a = indices[i - 2], b = indices[i - 1], c = indices[i];
+      if (a === b || b === c || a === c) continue;
+      if (i % 2 === 0) out.push([a, b, c]); else out.push([b, a, c]);
+    }
+    return out;
+  }
+  function readGeometry(view, chunk) {
+    const st = findChild(view, chunk, CHUNK.STRUCT);
+    if (!st || st.size < 16) throw new Error('Geometria DFF sem estrutura válida.');
+    let p = st.start;
+    const flags = safeU32(view, p); p += 4;
+    const triCount = safeU32(view, p); p += 4;
+    const vertexCount = safeU32(view, p); p += 4;
+    const morphCount = safeU32(view, p); p += 4;
+    if (flags & GEOM.NATIVE) throw new Error('Este DFF usa geometria nativa de plataforma, que não está disponível neste visualizador.');
+    if (!vertexCount || vertexCount > 2000000 || triCount > 4000000 || morphCount > 64) throw new Error('Quantidade de vértices ou faces inválida no DFF.');
+    const colors = [];
+    if (flags & GEOM.PRELIT) {
+      if (p + vertexCount * 4 > st.end) throw new Error('Dados de cores incompletos no DFF.');
+      for (let i = 0; i < vertexCount; i++) colors.push([view.getUint8(p), view.getUint8(p + 1), view.getUint8(p + 2), view.getUint8(p + 3)]), p += 4;
+    }
+    const uvCount = (flags & GEOM.TEXTURED2) ? 2 : ((flags & GEOM.TEXTURED) ? 1 : 0);
+    const uvLayers = [];
+    for (let layer = 0; layer < uvCount; layer++) {
+      const layerUV = [];
+      if (p + vertexCount * 8 > st.end) throw new Error('Coordenadas UV incompletas no DFF.');
+      for (let i = 0; i < vertexCount; i++) { layerUV.push([safeF32(view, p), safeF32(view, p + 4)]); p += 8; }
+      uvLayers.push(layerUV);
+    }
+    const triangles = [];
+    if (p + triCount * 8 > st.end) throw new Error('Lista de triângulos incompleta no DFF.');
+    for (let i = 0; i < triCount; i++) {
+      const b = view.getUint16(p, true), a = view.getUint16(p + 2, true), material = view.getUint16(p + 4, true), c = view.getUint16(p + 6, true);
+      triangles.push({ a, b, c, material });
+      p += 8;
+    }
+    let positions = [];
+    let normals = [];
+    for (let target = 0; target < morphCount; target++) {
+      if (p + 24 > st.end) throw new Error('Morph target incompleto no DFF.');
+      p += 16;
+      const hasVertices = safeU32(view, p) !== 0; p += 4;
+      const hasNormals = safeU32(view, p) !== 0; p += 4;
+      if (hasVertices) {
+        if (p + vertexCount * 12 > st.end) throw new Error('Vértices do morph target incompletos.');
+        const current = [];
+        for (let i = 0; i < vertexCount; i++) { current.push([safeF32(view, p), safeF32(view, p + 4), safeF32(view, p + 8)]); p += 12; }
+        if (!positions.length) positions = current;
+      }
+      if (hasNormals) {
+        if (p + vertexCount * 12 > st.end) throw new Error('Normais do morph target incompletas.');
+        const current = [];
+        for (let i = 0; i < vertexCount; i++) { current.push([safeF32(view, p), safeF32(view, p + 4), safeF32(view, p + 8)]); p += 12; }
+        if (!normals.length) normals = current;
+      }
+    }
+    if (!positions.length) throw new Error('O DFF não contém posições de vértices no formato esperado.');
+    const materials = readMaterialList(view, chunk);
+    const binMeshes = readBinMesh(view, chunk);
+    return { flags, vertexCount, triCount, positions, normals, colors, uvs: uvLayers[0] || [], materials, triangles, binMeshes };
+  }
+  function parseDFF(buffer) {
+    const view = new DataView(buffer);
+    const root = chunkAt(view, 0, view.byteLength);
+    if (root.id !== CHUNK.CLUMP) throw new Error('O arquivo não começa com um clump DFF RenderWare válido.');
+    const children = childChunks(view, root);
+    const frameChunk = children.find(c => c.id === CHUNK.FRAME_LIST);
+    const geomList = children.find(c => c.id === CHUNK.GEOMETRY_LIST);
+    if (!geomList) throw new Error('O DFF não contém Geometry List.');
+    const frames = readFrameList(view, frameChunk);
+    const geomChunks = childChunks(view, geomList).filter(c => c.id === CHUNK.GEOMETRY);
+    const geometries = geomChunks.map(c => readGeometry(view, c));
+    const atomics = children.filter(c => c.id === CHUNK.ATOMIC).map(c => {
+      const st = findChild(view, c, CHUNK.STRUCT);
+      if (!st || st.size < 12) return null;
+      return { frame: safeU32(view, st.start), geometry: safeU32(view, st.start + 4) };
+    }).filter(Boolean);
+    const instances = atomics.length ? atomics : geometries.map((g, index) => ({ frame: 0, geometry: index }));
+    const meshSets = [];
+    const rawGroups = [];
+    let totalTriangles = 0;
+    let totalVertices = 0;
+    const bounds = { min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] };
+
+    for (const atomic of instances) {
+      const geom = geometries[atomic.geometry];
+      if (!geom) continue;
+      const vertexCount = geom.vertexCount;
+      totalVertices += vertexCount;
+      const positions = new Float32Array(vertexCount * 3);
+      const normals = new Float32Array(vertexCount * 3);
+      const uvs = new Float32Array(vertexCount * 2);
+      const colors = new Float32Array(vertexCount * 4);
+
+      for (let i = 0; i < vertexCount; i++) {
+        const point = applyFrame(geom.positions[i], atomic.frame, frames);
+        const o = i * 3;
+        positions[o] = point[0]; positions[o + 1] = point[2]; positions[o + 2] = -point[1];
+        for (let axis = 0; axis < 3; axis++) {
+          bounds.min[axis] = Math.min(bounds.min[axis], positions[o + axis]);
+          bounds.max[axis] = Math.max(bounds.max[axis], positions[o + axis]);
+        }
+        const uv = geom.uvs[i] || [0, 0];
+        uvs[i * 2] = uv[0]; uvs[i * 2 + 1] = 1 - uv[1];
+        const color = geom.colors[i] || [255, 255, 255, 255];
+        const co = i * 4;
+        colors[co] = color[0] / 255; colors[co + 1] = color[1] / 255;
+        colors[co + 2] = color[2] / 255; colors[co + 3] = color[3] / 255;
+        if (geom.normals[i]) {
+          const n = transformNormal(geom.normals[i], atomic.frame, frames);
+          normals[o] = n[0]; normals[o + 1] = n[2]; normals[o + 2] = -n[1];
+        }
+      }
+
+      const materialIndices = new Map();
+      const appendTriangle = (material, a, b, c) => {
+        if (a >= vertexCount || b >= vertexCount || c >= vertexCount || a === b || b === c || a === c) return;
+        let list = materialIndices.get(material);
+        if (!list) materialIndices.set(material, list = []);
+        list.push(a, b, c);
+      };
+      if (geom.binMeshes && geom.binMeshes.length) {
+        for (const mesh of geom.binMeshes) {
+          if (mesh.strip) {
+            const tris = stripToTriangles(mesh.indices);
+            for (const tri of tris) appendTriangle(mesh.material, tri[0], tri[1], tri[2]);
+          } else {
+            for (let i = 0; i + 2 < mesh.indices.length; i += 3) appendTriangle(mesh.material, mesh.indices[i], mesh.indices[i + 1], mesh.indices[i + 2]);
+          }
+        }
+      } else {
+        for (const tri of geom.triangles) appendTriangle(tri.material, tri.a, tri.b, tri.c);
+      }
+
+      if (!geom.normals.length) {
+        for (const indices of materialIndices.values()) {
+          for (let i = 0; i + 2 < indices.length; i += 3) {
+            const ia = indices[i] * 3, ib = indices[i + 1] * 3, ic = indices[i + 2] * 3;
+            const a = [positions[ia], positions[ia + 1], positions[ia + 2]];
+            const b = [positions[ib], positions[ib + 1], positions[ib + 2]];
+            const c = [positions[ic], positions[ic + 1], positions[ic + 2]];
+            const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+            const ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+            const n = cross(ab, ac);
+            normals[ia] += n[0]; normals[ia + 1] += n[1]; normals[ia + 2] += n[2];
+            normals[ib] += n[0]; normals[ib + 1] += n[1]; normals[ib + 2] += n[2];
+            normals[ic] += n[0]; normals[ic + 1] += n[1]; normals[ic + 2] += n[2];
+          }
+        }
+        for (let i = 0; i < vertexCount; i++) {
+          const o = i * 3;
+          const n = normalize([normals[o], normals[o + 1], normals[o + 2]]);
+          normals[o] = n[0]; normals[o + 1] = n[1]; normals[o + 2] = n[2];
+        }
+      }
+
+      const setIndex = meshSets.length;
+      meshSets.push({ positions, normals, uvs, colors });
+      for (const [materialIndex, indices] of materialIndices.entries()) {
+        if (!indices.length) continue;
+        const material = geom.materials[materialIndex] || geom.materials[0] || { color: [220, 225, 238, 255], textureName: '' };
+        const maxIndex = indices.reduce((max, value) => Math.max(max, value), 0);
+        rawGroups.push({
+          setIndex, indices: maxIndex > 65535 ? new Uint32Array(indices) : new Uint16Array(indices),
+          color: material.color, textureName: material.textureName || '', count: indices.length
+        });
+        totalTriangles += indices.length / 3;
+      }
+    }
+
+    if (!rawGroups.length || !meshSets.length) throw new Error('Nenhuma face 3D válida foi encontrada no DFF.');
+    const center = bounds.min.map((value, i) => (value + bounds.max[i]) / 2);
+    let radius = 0;
+    for (const set of meshSets) {
+      for (let i = 0; i < set.positions.length; i += 3) {
+        const dx = set.positions[i] - center[0], dy = set.positions[i + 1] - center[1], dz = set.positions[i + 2] - center[2];
+        radius = Math.max(radius, Math.hypot(dx, dy, dz));
+        set.positions[i] = dx; set.positions[i + 1] = dy; set.positions[i + 2] = dz;
+      }
+    }
+    return {
+      groups: rawGroups, meshSets, vertexCount: totalVertices, triangleCount: totalTriangles,
+      materialCount: new Set(rawGroups.map(g => `${g.color.join(',')}:${g.textureName}`)).size,
+      radius: Math.max(radius, 0.01), bounds
+    };
+  }
+
+  function transformNormal(normal, frameIndex, frames) {
+    let out = normal.slice();
+    let index = frameIndex;
+    let depth = 0;
+    while (index >= 0 && index < frames.length && depth++ < 64) {
+      const f = frames[index];
+      const [x, y, z] = out;
+      out = [x * f.right[0] + y * f.up[0] + z * f.at[0], x * f.right[1] + y * f.up[1] + z * f.at[1], x * f.right[2] + y * f.up[2] + z * f.at[2]];
+      index = f.parent;
+    }
+    return normalize(out);
+  }
+  function cross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+  function normalize(v) { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; }
+
+  function color565(value) {
+    return [Math.round(((value >> 11) & 31) * 255 / 31), Math.round(((value >> 5) & 63) * 255 / 63), Math.round((value & 31) * 255 / 31)];
+  }
+  function writePixel(out, width, height, x, y, rgba) {
+    if (x < 0 || y < 0 || x >= width || y >= height) return;
+    const p = (y * width + x) * 4;
+    out[p] = rgba[0]; out[p + 1] = rgba[1]; out[p + 2] = rgba[2]; out[p + 3] = rgba[3];
+  }
+  function decodeDXT1(data, width, height, alpha = true) {
+    const out = new Uint8Array(width * height * 4);
+    let p = 0;
+    for (let by = 0; by < height; by += 4) for (let bx = 0; bx < width; bx += 4) {
+      if (p + 8 > data.length) break;
+      const c0 = data[p] | (data[p + 1] << 8), c1 = data[p + 2] | (data[p + 3] << 8);
+      const bits = (data[p + 4] | (data[p + 5] << 8) | (data[p + 6] << 16) | (data[p + 7] << 24)) >>> 0;
+      p += 8;
+      const a = color565(c0), b = color565(c1);
+      const colors = [[...a, 255], [...b, 255]];
+      if (c0 > c1 || !alpha) {
+        colors.push([0, 1, 2].map(i => Math.round((2 * a[i] + b[i]) / 3)).concat(255));
+        colors.push([0, 1, 2].map(i => Math.round((a[i] + 2 * b[i]) / 3)).concat(255));
+      } else {
+        colors.push([0, 1, 2].map(i => Math.round((a[i] + b[i]) / 2)).concat(255));
+        colors.push([0, 0, 0, 0]);
+      }
+      for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) {
+        const index = (bits >>> (2 * (y * 4 + x))) & 3;
+        writePixel(out, width, height, bx + x, by + y, colors[index]);
+      }
+    }
+    return out;
+  }
+  function decodeDXT3(data, width, height, premultiplied = false) {
+    const out = new Uint8Array(width * height * 4);
+    let p = 0;
+    for (let by = 0; by < height; by += 4) for (let bx = 0; bx < width; bx += 4) {
+      if (p + 16 > data.length) break;
+      const alphaBytes = data.subarray(p, p + 8); p += 8;
+      const block = decodeDXT1(data.subarray(p, p + 8), 4, 4, false); p += 8;
+      for (let i = 0; i < 16; i++) {
+        const nibble = (alphaBytes[i >> 1] >> ((i & 1) * 4)) & 15;
+        const x = i & 3, y = i >> 2, dst = ((by + y) * width + bx + x) * 4;
+        if (dst + 3 < out.length) {
+          const a = nibble * 17;
+          out[dst] = premultiplied && a ? Math.min(255, Math.round(block[i * 4] * 255 / a)) : (premultiplied ? 0 : block[i * 4]);
+          out[dst + 1] = premultiplied && a ? Math.min(255, Math.round(block[i * 4 + 1] * 255 / a)) : (premultiplied ? 0 : block[i * 4 + 1]);
+          out[dst + 2] = premultiplied && a ? Math.min(255, Math.round(block[i * 4 + 2] * 255 / a)) : (premultiplied ? 0 : block[i * 4 + 2]);
+          out[dst + 3] = a;
+        }
+      }
+    }
+    return out;
+  }
+  function decodeDXT5(data, width, height, premultiplied = false) {
+    const out = new Uint8Array(width * height * 4);
+    let p = 0;
+    for (let by = 0; by < height; by += 4) for (let bx = 0; bx < width; bx += 4) {
+      if (p + 16 > data.length) break;
+      const a0 = data[p], a1 = data[p + 1];
+      let alphaBits = 0;
+      for (let i = 0; i < 6; i++) alphaBits += data[p + 2 + i] * (2 ** (i * 8));
+      const alpha = [a0, a1];
+      if (a0 > a1) for (let i = 1; i <= 6; i++) alpha.push(Math.round(((7 - i) * a0 + i * a1) / 7));
+      else {
+        for (let i = 1; i <= 4; i++) alpha.push(Math.round(((5 - i) * a0 + i * a1) / 5));
+        alpha.push(0, 255);
+      }
+      const block = decodeDXT1(data.subarray(p + 8, p + 16), 4, 4, false);
+      p += 16;
+      for (let i = 0; i < 16; i++) {
+        const idx = Math.floor(alphaBits / (2 ** (i * 3))) & 7;
+        const x = i & 3, y = i >> 2, dst = ((by + y) * width + bx + x) * 4;
+        if (dst + 3 < out.length) {
+          const a = alpha[idx];
+          out[dst] = premultiplied && a ? Math.min(255, Math.round(block[i * 4] * 255 / a)) : (premultiplied ? 0 : block[i * 4]);
+          out[dst + 1] = premultiplied && a ? Math.min(255, Math.round(block[i * 4 + 1] * 255 / a)) : (premultiplied ? 0 : block[i * 4 + 1]);
+          out[dst + 2] = premultiplied && a ? Math.min(255, Math.round(block[i * 4 + 2] * 255 / a)) : (premultiplied ? 0 : block[i * 4 + 2]);
+          out[dst + 3] = a;
+        }
+      }
+    }
+    return out;
+  }
+  const D3D = {
+    A8R8G8B8: 21, B8G8R8: 22, R5G6B5: 23, X1R5G5B5: 24,
+    A1R5G5B5: 25, A4R4G4B4: 26, L8: 50, A8L8: 51,
+    DXT1: 827611204, DXT2: 844388420, DXT3: 861165636,
+    DXT4: 877942852, DXT5: 894720068
+  };
+  const RASTER = { MASK: 0x0f00, PAL8: 0x2000, PAL4: 0x4000 };
+
+  function decode16(value, format) {
+    if (format === D3D.R5G6B5) return [...color565(value), 255];
+    if (format === D3D.A1R5G5B5) return [
+      Math.round(((value >> 10) & 31) * 255 / 31),
+      Math.round(((value >> 5) & 31) * 255 / 31),
+      Math.round((value & 31) * 255 / 31),
+      (value & 0x8000) ? 255 : 0
+    ];
+    if (format === D3D.A4R4G4B4) return [
+      ((value >> 8) & 15) * 17, ((value >> 4) & 15) * 17,
+      (value & 15) * 17, ((value >> 12) & 15) * 17
+    ];
+    if (format === D3D.X1R5G5B5) return [
+      Math.round(((value >> 10) & 31) * 255 / 31),
+      Math.round(((value >> 5) & 31) * 255 / 31),
+      Math.round((value & 31) * 255 / 31), 255
+    ];
+    return [...color565(value), 255];
+  }
+
+  function decodeRawTexture(data, width, height, depth, d3dFormat, palette, rasterFlags = 0, hasAlpha = true) {
+    const pixelCount = width * height;
+    if (!Number.isSafeInteger(pixelCount) || pixelCount < 1 || pixelCount > 16777216) throw new Error('Dimensão de textura muito grande para decodificação segura.');
+    if (d3dFormat === D3D.DXT1) return decodeDXT1(data, width, height, true);
+    if (d3dFormat === D3D.DXT2) return decodeDXT3(data, width, height, true);
+    if (d3dFormat === D3D.DXT3) return decodeDXT3(data, width, height, false);
+    if (d3dFormat === D3D.DXT4) return decodeDXT5(data, width, height, true);
+    if (d3dFormat === D3D.DXT5) return decodeDXT5(data, width, height, false);
+
+    const out = new Uint8Array(pixelCount * 4);
+    const pal8 = (rasterFlags & RASTER.PAL8) !== 0;
+    const pal4 = (rasterFlags & RASTER.PAL4) !== 0;
+    if ((pal8 || pal4) && palette && palette.length >= (pal8 ? 1024 : 64)) {
+      for (let i = 0; i < pixelCount; i++) {
+        const index = pal8 ? data[i] : ((i & 1) ? (data[i >> 1] & 15) : ((data[i >> 1] >> 4) & 15));
+        const src = index * 4, dst = i * 4;
+        out[dst] = palette[src];
+        out[dst + 1] = palette[src + 1];
+        out[dst + 2] = palette[src + 2];
+        out[dst + 3] = hasAlpha ? palette[src + 3] : 255;
+      }
+      return out;
+    }
+
+    const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+    if (d3dFormat === D3D.L8 || depth === 8) {
+      for (let i = 0; i < pixelCount && i < data.length; i++) {
+        const value = data[i];
+        out[i * 4] = value; out[i * 4 + 1] = value; out[i * 4 + 2] = value; out[i * 4 + 3] = 255;
+      }
+      return out;
+    }
+    if (d3dFormat === D3D.A8L8) {
+      for (let i = 0; i < pixelCount; i++) {
+        const src = i * 2, dst = i * 4;
+        if (src + 1 >= data.length) break;
+        out[dst] = out[dst + 1] = out[dst + 2] = data[src];
+        out[dst + 3] = data[src + 1];
+      }
+      return out;
+    }
+    if (d3dFormat === D3D.A8R8G8B8 || depth === 32) {
+      for (let i = 0; i < pixelCount; i++) {
+        const src = i * 4, dst = i * 4;
+        if (src + 3 >= data.length) break;
+        out[dst] = data[src + 2]; out[dst + 1] = data[src + 1]; out[dst + 2] = data[src];
+        out[dst + 3] = hasAlpha ? data[src + 3] : 255;
+      }
+      return out;
+    }
+    if (d3dFormat === D3D.B8G8R8 || depth === 24) {
+      for (let i = 0; i < pixelCount; i++) {
+        const src = i * 3, dst = i * 4;
+        if (src + 2 >= data.length) break;
+        out[dst] = data[src + 2]; out[dst + 1] = data[src + 1]; out[dst + 2] = data[src]; out[dst + 3] = 255;
+      }
+      return out;
+    }
+    if ([D3D.R5G6B5, D3D.X1R5G5B5, D3D.A1R5G5B5, D3D.A4R4G4B4].includes(d3dFormat) || depth === 16) {
+      for (let i = 0; i < pixelCount; i++) {
+        const src = i * 2;
+        if (src + 1 >= data.length) break;
+        const rgba = decode16(dv.getUint16(src, true), d3dFormat);
+        if (!hasAlpha) rgba[3] = 255;
+        out.set(rgba, i * 4);
+      }
+      return out;
+    }
+    throw new Error(`Formato de textura não suportado (D3D ${d3dFormat}, ${depth} bits).`);
+  }
+
+  function resolveD3DFormat(platform, d3dFormat, rasterFlags, depth, compression) {
+    if (platform === 8 && (d3dFormat === 0 || d3dFormat === 1)) {
+      const compressed = { 1: D3D.DXT1, 2: D3D.DXT2, 3: D3D.DXT3, 4: D3D.DXT4, 5: D3D.DXT5 }[compression];
+      if (compressed) return compressed;
+    }
+    if (d3dFormat !== 0 && d3dFormat !== 1) return d3dFormat;
+    switch (rasterFlags & RASTER.MASK) {
+      case 0x0100: return D3D.A1R5G5B5;
+      case 0x0200: return D3D.R5G6B5;
+      case 0x0300: return D3D.A4R4G4B4;
+      case 0x0500: return D3D.A8R8G8B8;
+      case 0x0600: return D3D.B8G8R8;
+      case 0x0a00: return D3D.X1R5G5B5;
+    }
+    if (rasterFlags & RASTER.PAL8 || rasterFlags & RASTER.PAL4) return 41;
+    if (depth === 32) return D3D.A8R8G8B8;
+    if (depth === 16) return (rasterFlags & 0x8000) ? D3D.A1R5G5B5 : D3D.R5G6B5;
+    if (depth === 8) return 41;
+    return d3dFormat;
+  }
+
+  function parseTXD(buffer) {
+    const view = new DataView(buffer);
+    const root = chunkAt(view, 0, view.byteLength);
+    if (root.id !== CHUNK.TEXTURE_DICTIONARY) throw new Error('O arquivo não começa com um Texture Dictionary TXD RenderWare válido.');
+    const children = childChunks(view, root);
+    const dict = children.find(c => c.id === CHUNK.STRUCT);
+    if (!dict || dict.size < 4) throw new Error('Cabeçalho do TXD incompleto.');
+    const textureCount = view.getUint16(dict.start, true);
+    const deviceId = view.getUint16(dict.start + 2, true);
+    if (textureCount > 8192) throw new Error('Número de texturas inválido no TXD.');
+    const textures = new Map();
+
+    for (const native of children.filter(c => c.id === CHUNK.TEXTURE_NATIVE)) {
+      const st = findChild(view, native, CHUNK.STRUCT);
+      if (!st || st.size < 88) continue;
+      let p = st.start;
+      const platform = safeU32(view, p); p += 4;
+      const filterFlags = safeU32(view, p); p += 4;
+      const name = decodeString(new Uint8Array(view.buffer, p, 32)); p += 32;
+      const mask = decodeString(new Uint8Array(view.buffer, p, 32)); p += 32;
+      const rasterFlags = safeU32(view, p); p += 4;
+      const storedFormat = safeU32(view, p); p += 4;
+      const width = view.getUint16(p, true); p += 2;
+      const height = view.getUint16(p, true); p += 2;
+      const depth = view.getUint8(p++);
+      const levels = Math.max(1, view.getUint8(p++));
+      const rasterType = view.getUint8(p++);
+      const compression = view.getUint8(p++);
+      if (!name || !width || !height || width > 8192 || height > 8192) continue;
+      if (platform !== 8 && platform !== 9) continue;
+
+      const paletteLength = (rasterFlags & RASTER.PAL8) ? 1024 : ((rasterFlags & RASTER.PAL4) ? 64 : 0);
+      if (p + paletteLength > st.end) throw new Error(`Paleta incompleta na textura ${name}.`);
+      const palette = paletteLength ? new Uint8Array(view.buffer, p, paletteLength) : null;
+      p += paletteLength;
+      const mipmaps = [];
+      let mw = width, mh = height;
+      for (let level = 0; level < levels && p + 4 <= st.end; level++) {
+        const size = safeU32(view, p); p += 4;
+        if (!size || size > st.end - p) break;
+        mipmaps.push(new Uint8Array(view.buffer, p, size));
+        p += size;
+        mw = Math.max(1, mw >> 1); mh = Math.max(1, mh >> 1);
+      }
+      if (!mipmaps.length) continue;
+      const d3dFormat = resolveD3DFormat(platform, storedFormat, rasterFlags, depth, compression);
+      const rasterFormat = (rasterFlags >>> 8) & 15;
+      const hasAlpha = platform === 9 ? ((compression & 1) !== 0 || [D3D.A8R8G8B8, D3D.DXT2, D3D.DXT3, D3D.DXT4, D3D.DXT5].includes(storedFormat)) : ![2, 4, 6, 10].includes(rasterFormat);
+      textures.set(name.toLowerCase(), {
+        name, mask, width, height, depth, platform, filter: filterFlags & 255,
+        addressing: (filterFlags >>> 8) & 255, rasterFlags, d3dFormat,
+        compression, hasAlpha, mipmaps, palette, rasterType, data: null
+      });
+    }
+    if (!textures.size && textureCount) throw new Error('O TXD foi reconhecido, mas nenhuma textura PC/D3D8/D3D9 compatível foi encontrada.');
+    return { textures, declaredCount: textureCount, deviceId };
+  }
+
+
+  function runParserWorker(type, buffer) {
+    const parseFallback = () => type === 'dff' ? parseDFF(buffer) : parseTXD(buffer);
+    if (!window.Worker || !window.Blob || !window.URL || !URL.createObjectURL) return Promise.resolve().then(parseFallback);
+    const sharedFunctions = [chunkAt, childChunks, findChild, decodeString, safeU32];
+    const dffFunctions = [safeF32, readFrameList, transformPoint, applyFrame, readMaterial, readMaterialList, readBinMesh, stripToTriangles, readGeometry, transformNormal, cross, normalize, parseDFF];
+    const txdFunctions = [resolveD3DFormat, parseTXD];
+    const functions = sharedFunctions.concat(type === 'dff' ? dffFunctions : txdFunctions);
+    const constants = `const CHUNK = ${JSON.stringify(CHUNK)}; const GEOM = ${JSON.stringify(GEOM)}; const D3D = ${JSON.stringify(D3D)}; const RASTER = ${JSON.stringify(RASTER)};`;
+    const handler = `
+      self.onmessage = (event) => {
+        const { type, buffer } = event.data;
+        try {
+          const result = type === 'dff' ? parseDFF(buffer) : parseTXD(buffer);
+          const transfer = [];
+          const seen = new Set();
+          const add = (array) => {
+            if (array && array.buffer instanceof ArrayBuffer && !seen.has(array.buffer)) {
+              seen.add(array.buffer);
+              transfer.push(array.buffer);
+            }
+          };
+          if (type === 'dff') {
+            for (const set of result.meshSets) { add(set.positions); add(set.normals); add(set.uvs); add(set.colors); }
+            for (const group of result.groups) add(group.indices);
+          } else {
+            for (const texture of result.textures.values()) {
+              add(texture.palette);
+              for (const mip of texture.mipmaps) add(mip);
+            }
+          }
+          self.postMessage({ ok: true, result }, transfer);
+        } catch (error) {
+          self.postMessage({ ok: false, error: error && error.message ? error.message : String(error) });
+        }
+      };
+    `;
+    const source = `${constants}\n${functions.map(fn => fn.toString()).join('\n')}\n${handler}`;
+
+    const url = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
+    return new Promise((resolve, reject) => {
+      let worker;
+      try { worker = new Worker(url); }
+      catch (_) { URL.revokeObjectURL(url); resolve(parseFallback()); return; }
+      const finish = () => { worker.terminate(); URL.revokeObjectURL(url); };
+      worker.onmessage = event => {
+        finish();
+        if (event.data && event.data.ok) resolve(event.data.result);
+        else reject(new Error(event.data?.error || 'Falha ao analisar o arquivo.'));
+      };
+      worker.onerror = () => {
+        finish();
+        try { resolve(parseFallback()); } catch (error) { reject(error); }
+      };
+      const workerBuffer = buffer.slice(0);
+      try { worker.postMessage({ type, buffer: workerBuffer }, [workerBuffer]); }
+      catch (_) {
+        finish();
+        try { resolve(parseFallback()); } catch (error) { reject(error); }
+      }
+    });
+  }
+
+  function textureLevelSize(texture, level) {
+    return { width: Math.max(1, texture.width >> level), height: Math.max(1, texture.height >> level) };
+  }
+  function decodeTextureLevel(texture, level = 0) {
+    const dims = textureLevelSize(texture, level);
+    const bytes = texture.mipmaps[level] || texture.mipmaps[0];
+    return decodeRawTexture(bytes, dims.width, dims.height, texture.depth, texture.d3dFormat, texture.palette, texture.rasterFlags, texture.hasAlpha);
+  }
+
+  const vertexShader = `
+    attribute vec3 aPosition;
+    attribute vec3 aNormal;
+    attribute vec2 aUV;
+    attribute vec4 aColor;
+    uniform mat4 uMVP;
+    varying vec3 vNormal;
+    varying vec2 vUV;
+    varying vec4 vColor;
+    void main() {
+      gl_Position = uMVP * vec4(aPosition, 1.0);
+      vNormal = aNormal;
+      vUV = aUV;
+      vColor = aColor;
+    }
+  `;
+  const fragmentShader = `
+    precision mediump float;
+    uniform vec4 uMaterialColor;
+    uniform sampler2D uTexture;
+    uniform float uUseTexture;
+    varying vec3 vNormal;
+    varying vec2 vUV;
+    varying vec4 vColor;
+    void main() {
+      vec4 base = uMaterialColor * vColor;
+      if (uUseTexture > 0.5) base *= texture2D(uTexture, vUV);
+      vec3 n = normalize(vNormal);
+      float light = 0.58 + 0.42 * max(dot(n, normalize(vec3(-0.42, 0.78, 0.48))), 0.0);
+      gl_FragColor = vec4(base.rgb * light, base.a);
+    }
+  `;
+  function compileShader(context, type, source) {
+    const shader = context.createShader(type);
+    context.shaderSource(shader, source);
+    context.compileShader(shader);
+    if (!context.getShaderParameter(shader, context.COMPILE_STATUS)) {
+      const message = context.getShaderInfoLog(shader) || 'Falha ao compilar shader.';
+      context.deleteShader(shader);
+      throw new Error(message);
+    }
+    return shader;
+  }
+  function initRenderer() {
+    const canvas = $('viewport');
+    try {
+      gl = canvas.getContext('webgl', { alpha: false, antialias: true, preserveDrawingBuffer: false }) || canvas.getContext('experimental-webgl');
+      if (!gl) throw new Error('WebGL não está disponível neste navegador.');
+      const vs = compileShader(gl, gl.VERTEX_SHADER, vertexShader);
+      const fs = compileShader(gl, gl.FRAGMENT_SHADER, fragmentShader);
+      program = gl.createProgram();
+      gl.attachShader(program, vs); gl.attachShader(program, fs); gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || 'Falha ao iniciar o visualizador 3D.');
+      gl.useProgram(program);
+      attribLocations = {
+        position: gl.getAttribLocation(program, 'aPosition'), normal: gl.getAttribLocation(program, 'aNormal'),
+        uv: gl.getAttribLocation(program, 'aUV'), color: gl.getAttribLocation(program, 'aColor')
+      };
+      uniformLocations = {
+        mvp: gl.getUniformLocation(program, 'uMVP'), texture: gl.getUniformLocation(program, 'uTexture'),
+        materialColor: gl.getUniformLocation(program, 'uMaterialColor'), useTexture: gl.getUniformLocation(program, 'uUseTexture')
+      };
+      Object.values(attribLocations).forEach(location => gl.enableVertexAttribArray(location));
+      rendererCaps.uintIndices = !!gl.getExtension('OES_element_index_uint');
+      rendererCaps.s3tc = gl.getExtension('WEBGL_compressed_texture_s3tc') || gl.getExtension('WEBKIT_WEBGL_compressed_texture_s3tc') || gl.getExtension('MOZ_WEBGL_compressed_texture_s3tc');
+      gl.enable(gl.DEPTH_TEST);
+      gl.disable(gl.CULL_FACE);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      return true;
+    } catch (error) {
+      setStatus(error.message, 'error');
+      $('emptyState').querySelector('.empty-title').textContent = 'Visualização 3D indisponível';
+      $('emptyState').querySelector('.empty-copy').textContent = error.message;
+      return false;
+    }
+  }
+  function perspective(fov, aspect, near, far) {
+    const f = 1 / Math.tan(fov / 2), nf = 1 / (near - far);
+    return new Float32Array([f / aspect, 0, 0, 0, 0, f, 0, 0, 0, 0, (far + near) * nf, -1, 0, 0, 2 * far * near * nf, 0]);
+  }
+  function lookAt(eye, target, up) {
+    let z = normalize([eye[0] - target[0], eye[1] - target[1], eye[2] - target[2]]);
+    let x = normalize(cross(up, z));
+    let y = cross(z, x);
+    return new Float32Array([
+      x[0], y[0], z[0], 0,
+      x[1], y[1], z[1], 0,
+      x[2], y[2], z[2], 0,
+      -dot(x, eye), -dot(y, eye), -dot(z, eye), 1
+    ]);
+  }
+  function dot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+  function multiply4(a, b) {
+    const out = new Float32Array(16);
+    for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) out[c * 4 + r] = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3];
+    return out;
+  }
+  function makeTexture(texture) {
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    const s3tc = rendererCaps.s3tc;
+    const compressedFormats = {
+      [D3D.DXT1]: s3tc && s3tc.COMPRESSED_RGBA_S3TC_DXT1_EXT,
+      [D3D.DXT3]: s3tc && s3tc.COMPRESSED_RGBA_S3TC_DXT3_EXT,
+      [D3D.DXT5]: s3tc && s3tc.COMPRESSED_RGBA_S3TC_DXT5_EXT
+    };
+    const compressedFormat = compressedFormats[texture.d3dFormat];
+    let uploadedCompressed = false;
+    if (compressedFormat && texture.mipmaps?.length) {
+      try {
+        let w = texture.width, h = texture.height;
+        texture.mipmaps.forEach((mip, level) => {
+          gl.compressedTexImage2D(gl.TEXTURE_2D, level, compressedFormat, w, h, 0, mip);
+          w = Math.max(1, w >> 1); h = Math.max(1, h >> 1);
+        });
+        uploadedCompressed = true;
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, texture.mipmaps.length > 1 ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR);
+      } catch (_) {
+        gl.deleteTexture(tex);
+        return makeTexture({ ...texture, d3dFormat: -1, mipmaps: [decodeTextureLevel(texture, 0)], palette: null, rasterFlags: 0, data: null, forceRGBA: true });
+      }
+    }
+    if (!uploadedCompressed) {
+      const pixels = texture.forceRGBA ? texture.mipmaps[0] : decodeTextureLevel(texture, 0);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texture.width, texture.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    }
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, (texture.addressing & 1) ? gl.REPEAT : gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, (texture.addressing & 2) ? gl.REPEAT : gl.CLAMP_TO_EDGE);
+    return tex;
+  }
+  function disposeGroups() {
+    if (!gl) return;
+    for (const g of glGroups) gl.deleteBuffer(g.indexBuffer);
+    for (const set of glGeometryBuffers) {
+      gl.deleteBuffer(set.position); gl.deleteBuffer(set.normal); gl.deleteBuffer(set.uv); gl.deleteBuffer(set.color);
+    }
+    for (const texture of glTextureCache.values()) gl.deleteTexture(texture);
+    glGroups = [];
+    glGeometryBuffers = [];
+    glTextureCache.clear();
+  }
+  function createArrayBuffer(values) {
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, values, gl.STATIC_DRAW);
+    return buffer;
+  }
+  function buildGLModel(model, txd) {
+    if (!gl || !model) return;
+    disposeGroups();
+    gl.useProgram(program);
+    glGeometryBuffers = model.meshSets.map(set => ({
+      position: createArrayBuffer(set.positions),
+      normal: createArrayBuffer(set.normals),
+      uv: createArrayBuffer(set.uvs),
+      color: createArrayBuffer(set.colors)
+    }));
+    for (const source of model.groups) {
+      if (source.indices instanceof Uint32Array && !rendererCaps.uintIndices) {
+        throw new Error('Este modelo ultrapassa 65.535 índices por malha e o navegador não oferece suporte a índices de 32 bits.');
+      }
+      const indexBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, source.indices, gl.STATIC_DRAW);
+      let texture = null;
+      if (txd && source.textureName) {
+        const key = source.textureName.toLowerCase();
+        const found = txd.textures.get(key);
+        if (found) {
+          if (!glTextureCache.has(key)) glTextureCache.set(key, makeTexture(found));
+          texture = glTextureCache.get(key);
+        }
+      }
+      glGroups.push({ setIndex: source.setIndex, indexBuffer, count: source.count, indexType: source.indices instanceof Uint32Array ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT, materialColor: source.color, texture, useTexture: !!texture });
+    }
+    camera.radius = model.radius;
+    camera.distance = Math.max(model.radius * 3.2, 1.2);
+    camera.yaw = 0.72; camera.pitch = 0.24; camera.target = [0, 0, 0];
+    drawFrame();
+  }
+  function resizeCanvas() {
+    if (!gl) return;
+    const canvas = $('viewport');
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    const width = Math.max(1, Math.floor(canvas.clientWidth * dpr));
+    const height = Math.max(1, Math.floor(canvas.clientHeight * dpr));
+    if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
+    gl.viewport(0, 0, width, height);
+    drawFrame();
+  }
+  function scheduleDraw() {
+    if (drawPending) return;
+    drawPending = true;
+    requestAnimationFrame(() => { drawPending = false; drawFrame(); });
+  }
+  function drawFrame() {
+    if (!gl || !program) return;
+    const w = $('viewport').width || 1, h = $('viewport').height || 1;
+    gl.viewport(0, 0, w, h);
+    gl.clearColor(0.035, 0.062, 0.105, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    if (!glGroups.length) return;
+    const cp = Math.cos(camera.pitch), sp = Math.sin(camera.pitch);
+    const eye = [camera.target[0] + Math.sin(camera.yaw) * cp * camera.distance, camera.target[1] + sp * camera.distance, camera.target[2] + Math.cos(camera.yaw) * cp * camera.distance];
+    const projection = perspective(0.72, w / h, Math.max(camera.radius / 1000, 0.001), Math.max(camera.distance * 30, 100));
+    const view = lookAt(eye, camera.target, [0, 1, 0]);
+    const mvp = multiply4(projection, view);
+    gl.useProgram(program);
+    gl.uniformMatrix4fv(uniformLocations.mvp, false, mvp);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.uniform1i(uniformLocations.texture, 0);
+    for (const g of glGroups) {
+      const set = glGeometryBuffers[g.setIndex];
+      gl.bindBuffer(gl.ARRAY_BUFFER, set.position); gl.vertexAttribPointer(attribLocations.position, 3, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, set.normal); gl.vertexAttribPointer(attribLocations.normal, 3, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, set.uv); gl.vertexAttribPointer(attribLocations.uv, 2, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, set.color); gl.vertexAttribPointer(attribLocations.color, 4, gl.FLOAT, false, 0, 0);
+      const c = g.materialColor;
+      gl.uniform4f(uniformLocations.materialColor, (c[0] ?? 255) / 255, (c[1] ?? 255) / 255, (c[2] ?? 255) / 255, (c[3] ?? 255) / 255);
+      gl.uniform1f(uniformLocations.useTexture, g.useTexture ? 1 : 0);
+      if (g.texture) gl.bindTexture(gl.TEXTURE_2D, g.texture);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, g.indexBuffer);
+      gl.drawElements(gl.TRIANGLES, g.count, g.indexType, 0);
+    }
+  }
+  function renderTextureGrid(txd) {
+    const grid = $('textureGrid');
+    if (textureObserver) textureObserver.disconnect();
+    textureObserver = null;
+    grid.innerHTML = '';
+    if (!txd || !txd.textures.size) {
+      grid.innerHTML = '<div class="textures-empty">As texturas do arquivo TXD aparecerão aqui.</div>';
+      $('textureCountLabel').textContent = '0 TEXTURAS';
+      $('texturesMetric').textContent = '—';
+      return;
+    }
+    $('textureCountLabel').textContent = `${txd.textures.size} TEXTURAS`;
+    $('texturesMetric').textContent = String(txd.textures.size);
+    const maxThumbs = 80;
+    let shown = 0;
+    const paintThumbnail = (canvas, tex) => {
+      let level = 0;
+      while (level + 1 < tex.mipmaps.length && Math.max(tex.width >> level, tex.height >> level) > 256) level++;
+      try {
+        const dims = textureLevelSize(tex, level);
+        const pixels = decodeTextureLevel(tex, level);
+        const scale = Math.min(1, 256 / Math.max(dims.width, dims.height));
+        const outW = Math.max(1, Math.round(dims.width * scale));
+        const outH = Math.max(1, Math.round(dims.height * scale));
+        const small = new Uint8ClampedArray(outW * outH * 4);
+        for (let y = 0; y < outH; y++) for (let x = 0; x < outW; x++) {
+          const src = (Math.min(dims.height - 1, Math.floor(y / scale)) * dims.width + Math.min(dims.width - 1, Math.floor(x / scale))) * 4;
+          const dst = (y * outW + x) * 4;
+          small[dst] = pixels[src]; small[dst + 1] = pixels[src + 1]; small[dst + 2] = pixels[src + 2]; small[dst + 3] = pixels[src + 3];
+        }
+        canvas.width = outW; canvas.height = outH;
+        canvas.getContext('2d').putImageData(new ImageData(small, outW, outH), 0, 0);
+      } catch (error) {
+        canvas.width = 96; canvas.height = 64;
+        const ctx = canvas.getContext('2d'); ctx.fillStyle = '#252d3d'; ctx.fillRect(0, 0, 96, 64);
+        ctx.fillStyle = '#b8c1d4'; ctx.font = '10px sans-serif'; ctx.fillText('Formato não lido', 6, 34);
+      }
+    };
+    if (window.IntersectionObserver) {
+      const observer = new IntersectionObserver(entries => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const target = entry.target;
+          observer.unobserve(target);
+          paintThumbnail(target.querySelector('canvas'), target._textureData);
+        }
+      }, { rootMargin: '180px' });
+      textureObserver = observer;
+    }
+    for (const tex of txd.textures.values()) {
+      if (shown++ >= maxThumbs) break;
+      const item = document.createElement('div'); item.className = 'texture-item';
+      const thumb = document.createElement('div'); thumb.className = 'texture-thumb';
+      const canvas = document.createElement('canvas');
+      canvas.width = 1; canvas.height = 1;
+      thumb.appendChild(canvas);
+      const name = document.createElement('div'); name.className = 'texture-name'; name.textContent = tex.name;
+      const size = document.createElement('div'); size.className = 'texture-size'; size.textContent = `${tex.width} × ${tex.height}`;
+      item.append(thumb, name, size); item._textureData = tex; grid.appendChild(item);
+      if (textureObserver) textureObserver.observe(item); else paintThumbnail(canvas, tex);
+    }
+    if (txd.textures.size > maxThumbs) {
+      const more = document.createElement('div'); more.className = 'textures-empty';
+      more.textContent = `Mostrando ${maxThumbs} de ${txd.textures.size} texturas; miniaturas são carregadas conforme aparecem na tela.`;
+      grid.appendChild(more);
+    }
+  }
+
+  function refreshCurrent() {
+    const state = activeState();
+    const hasModel = !!state.model;
+    $('emptyState').style.display = hasModel ? 'none' : 'flex';
+    $('modelInfo').classList.toggle('visible', hasModel);
+    $('modelFileChip').textContent = state.dffFile ? state.dffFile.name : 'MODEL.DFF';
+    $('modelStateChip').textContent = hasModel && state.model.groups.some(g => g.textureName) ? (state.txd ? 'TEXTURE DICTIONARY' : 'SEM TXD') : 'MODEL 3D';
+    $('verticesMetric').textContent = hasModel ? state.model.vertexCount.toLocaleString('pt-BR') : '—';
+    $('trianglesMetric').textContent = hasModel ? state.model.triangleCount.toLocaleString('pt-BR') : '—';
+    $('materialsMetric').textContent = hasModel ? String(state.model.materialCount) : '—';
+    $('modeStatus').textContent = activeMode === 'vehicle' ? 'VEÍCULO' : 'SKIN';
+    setFileState('dff', state.dffFile, state.model ? 'ready' : (state.dffFile ? 'error' : ''), state.model ? 'DFF CARREGADO' : (state.dffFile ? 'ERRO AO LER DFF' : 'AGUARDANDO ARQUIVO'));
+    setFileState('txd', state.txdFile, state.txd ? 'ready' : (state.txdFile ? 'error' : ''), state.txd ? 'TXD CARREGADO' : (state.txdFile ? 'ERRO AO LER TXD' : 'AGUARDANDO ARQUIVO'));
+    renderTextureGrid(state.txd);
+    if (state.model) {
+      buildGLModel(state.model, state.txd);
+      const hasUnmatched = state.model.groups.some(g => g.textureName && (!state.txd || !state.txd.textures.has(g.textureName.toLowerCase())));
+      setStatus(state.txd ? (hasUnmatched ? 'Modelo carregado; algumas texturas do DFF não foram encontradas no TXD.' : 'Modelo e dicionário de texturas carregados.') : 'Modelo 3D carregado. Importe o TXD para aplicar as texturas.', state.txd && !hasUnmatched ? 'good' : 'warn');
+    } else {
+      disposeGroups(); drawFrame();
+      if (!state.dffFile) setStatus('Aguardando arquivos DFF e TXD.');
+    }
+  }
+  async function importDFF(file) {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.dff')) { setStatus('Selecione um arquivo com extensão .dff.', 'error'); return; }
+    const state = activeState(); state.dffFile = file; state.model = null;
+    setFileState('dff', file, '', 'LENDO ARQUIVO...');
+    $('dffName').textContent = file.name; $('dffSize').textContent = fmtBytes(file.size);
+    setStatus('Lendo geometria e materiais do DFF...');
+    try {
+      const buffer = await readFile(file);
+      state.model = await runParserWorker('dff', buffer);
+      refreshCurrent();
+    } catch (error) {
+      state.model = null;
+      setFileState('dff', file, 'error', 'FALHA NA LEITURA');
+      $('emptyState').style.display = 'flex';
+      $('emptyState').querySelector('.empty-title').textContent = 'Não foi possível abrir o DFF';
+      $('emptyState').querySelector('.empty-copy').textContent = error.message;
+      disposeGroups();
+      setStatus(error.message, 'error');
+    }
+  }
+  async function importTXD(file) {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.txd')) { setStatus('Selecione um arquivo com extensão .txd.', 'error'); return; }
+    const state = activeState(); state.txdFile = file; state.txd = null;
+    setFileState('txd', file, '', 'LENDO ARQUIVO...');
+    $('txdName').textContent = file.name; $('txdSize').textContent = fmtBytes(file.size);
+    setStatus('Lendo dicionário e decodificando texturas TXD...');
+    try {
+      const buffer = await readFile(file);
+      state.txd = await runParserWorker('txd', buffer);
+      refreshCurrent();
+    } catch (error) {
+      state.txd = null;
+      setFileState('txd', file, 'error', 'FALHA NA LEITURA');
+      renderTextureGrid(null);
+      setStatus(error.message, 'error');
+      if (state.model) buildGLModel(state.model, null);
+    }
+  }
+  function setMode(mode) {
+    activeMode = mode;
+    $('vehicleMode').classList.toggle('active', mode === 'vehicle');
+    $('skinMode').classList.toggle('active', mode === 'skin');
+    $('vehicleMode').setAttribute('aria-selected', String(mode === 'vehicle'));
+    $('skinMode').setAttribute('aria-selected', String(mode === 'skin'));
+    refreshCurrent();
+  }
+  function setupDrop(dropId, inputId, importer) {
+    const drop = $(dropId), input = $(inputId);
+    drop.addEventListener('click', () => input.click());
+    drop.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); input.click(); } });
+    input.addEventListener('change', (event) => { if (event.target.files && event.target.files[0]) importer(event.target.files[0]); input.value = ''; });
+    drop.addEventListener('dragover', (event) => { event.preventDefault(); drop.classList.add('dragover'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+    drop.addEventListener('drop', (event) => {
+      event.preventDefault(); drop.classList.remove('dragover');
+      const file = event.dataTransfer.files && event.dataTransfer.files[0];
+      if (file) importer(file);
+    });
+  }
+  function resetCamera() {
+    if (!activeState().model) return;
+    camera.yaw = 0.72; camera.pitch = 0.24; camera.distance = Math.max(camera.radius * 3.2, 1.2); camera.target = [0, 0, 0]; scheduleDraw();
+  }
+  function setupControls() {
+    $('vehicleMode').addEventListener('click', () => setMode('vehicle'));
+    $('skinMode').addEventListener('click', () => setMode('skin'));
+    $('resetView').addEventListener('click', resetCamera);
+    const canvas = $('viewport');
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
+    canvas.addEventListener('pointerdown', (event) => {
+      pointer = { id: event.pointerId, x: event.clientX, y: event.clientY, button: event.button, startX: event.clientX, startY: event.clientY };
+      canvas.setPointerCapture(event.pointerId); canvas.classList.add('dragging');
+    });
+    canvas.addEventListener('pointermove', (event) => {
+      if (!pointer || pointer.id !== event.pointerId) return;
+      const dx = event.clientX - pointer.x, dy = event.clientY - pointer.y;
+      pointer.x = event.clientX; pointer.y = event.clientY;
+      if (pointer.button === 2 || event.shiftKey) {
+        const scale = camera.distance * 0.0024;
+        camera.target[0] -= dx * scale * Math.cos(camera.yaw);
+        camera.target[2] += dx * scale * Math.sin(camera.yaw);
+        camera.target[1] += dy * scale;
+      } else {
+        camera.yaw -= dx * 0.008;
+        camera.pitch = Math.max(-1.45, Math.min(1.45, camera.pitch + dy * 0.008));
+      }
+      scheduleDraw();
+    });
+    const stop = () => { pointer = null; canvas.classList.remove('dragging'); };
+    canvas.addEventListener('pointerup', stop); canvas.addEventListener('pointercancel', stop); canvas.addEventListener('lostpointercapture', stop);
+    canvas.addEventListener('wheel', (event) => {
+      event.preventDefault();
+      camera.distance = Math.max(camera.radius * 0.75, Math.min(camera.radius * 25, camera.distance * (event.deltaY > 0 ? 1.12 : 0.89)));
+      scheduleDraw();
+    }, { passive: false });
+    window.addEventListener('resize', resizeCanvas);
+  }
+
+  // ---------- OBJ / FBX / GLB -> RenderWare DFF + TXD ----------
+  const RW_VERSION = 0x1803ffff;
+  const RW_CHUNK = { STRUCT: 1, STRING: 2, EXTENSION: 3, TEXTURE: 6, MATERIAL: 7, MATERIAL_LIST: 8, FRAME_LIST: 14, GEOMETRY: 15, CLUMP: 16, ATOMIC: 20, TEXTURE_NATIVE: 21, TEXTURE_DICTIONARY: 22, GEOMETRY_LIST: 26, BIN_MESH: 1294 };
+  const CONVERT = { sourceFiles: [], sourceModel: null, outputDFF: null, outputTXD: null, outputNames: null, objectURLs: [] };
+
+  class BinaryWriter {
+    constructor() { this.parts = []; this.length = 0; }
+    push(bytes) { const value = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes); this.parts.push(value); this.length += value.length; }
+    u8(v) { this.push([v & 255]); }
+    u16(v) { this.push([v & 255, (v >>> 8) & 255]); }
+    u32(v) { this.push([v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255]); }
+    i32(v) { this.u32(v >>> 0); }
+    f32(v) { const b = new ArrayBuffer(4); new DataView(b).setFloat32(0, Number.isFinite(v) ? v : 0, true); this.push(new Uint8Array(b)); }
+    bytes(v) { this.push(v); }
+    finish() { const out = new Uint8Array(this.length); let p = 0; for (const part of this.parts) { out.set(part, p); p += part.length; } return out; }
+  }
+  function rwChunk(id, data) {
+    const bytes = data instanceof Uint8Array ? data : data.finish();
+    if (bytes.length > 0xffffffff) throw new Error('Seção RenderWare maior que o limite do formato.');
+    const out = new BinaryWriter(); out.u32(id); out.u32(bytes.length); out.u32(RW_VERSION); out.bytes(bytes); return out.finish();
+  }
+  function rwContainer(id, children) {
+    const out = new BinaryWriter(); for (const child of children) out.bytes(child); return rwChunk(id, out.finish());
+  }
+  function rwString(value) { const w = new BinaryWriter(); const bytes = new TextEncoder().encode(String(value || '') + '\0'); w.bytes(bytes); return rwChunk(2, w.finish()); }
+  function makeMaterial(name, color) {
+    return { name: name || 'material', color: color ? color.slice(0, 4) : [255, 255, 255, 255], texture: null, textureName: '' };
+  }
+  function createPrimitive(material) {
+    return { positions: [], uvs: [], normals: [], indices: [], material: material || makeMaterial('default') };
+  }
+  function vec3Normalize(x, y, z) { const n = Math.hypot(x, y, z) || 1; return [x / n, y / n, z / n]; }
+  function generateNormals(positions, indices) {
+    const out = new Array(positions.length).fill(0);
+    for (let i = 0; i + 2 < indices.length; i += 3) {
+      const a = indices[i] * 3, b = indices[i + 1] * 3, c = indices[i + 2] * 3;
+      const abx = positions[b] - positions[a], aby = positions[b + 1] - positions[a + 1], abz = positions[b + 2] - positions[a + 2];
+      const acx = positions[c] - positions[a], acy = positions[c + 1] - positions[a + 1], acz = positions[c + 2] - positions[a + 2];
+      const nx = aby * acz - abz * acy, ny = abz * acx - abx * acz, nz = abx * acy - aby * acx;
+      for (const p of [a, b, c]) { out[p] += nx; out[p + 1] += ny; out[p + 2] += nz; }
+    }
+    for (let i = 0; i < out.length; i += 3) { const n = vec3Normalize(out[i], out[i + 1], out[i + 2]); out[i] = n[0]; out[i + 1] = n[1]; out[i + 2] = n[2]; }
+    return out;
+  }
+  function selectedFileMap(files) {
+    const map = new Map();
+    for (const file of files) {
+      const full = file.webkitRelativePath || file.name;
+      map.set(full.replace(/\\/g, '/').toLowerCase(), file);
+      map.set(file.name.toLowerCase(), file);
+    }
+    return map;
+  }
+  function findSelectedFile(map, reference) {
+    if (!reference) return null;
+    const clean = String(reference).replace(/\\/g, '/').replace(/^\.\//, '').toLowerCase();
+    return map.get(clean) || map.get(clean.split('/').pop()) || null;
+  }
+  function safeTextureName(value, used) {
+    let name = String(value || 'texture').split(/[\\/]/).pop().replace(/\.[^.]+$/, '').normalize('NFKD').replace(/[^a-zA-Z0-9_]/g, '_').replace(/^_+|_+$/g, '').toLowerCase().slice(0, 28) || 'texture';
+    const base = name; let suffix = 1;
+    while (used.has(name)) name = (base.slice(0, 24) + '_' + suffix++).slice(0, 31);
+    used.add(name); return name;
+  }
+  async function imageFileToPixels(file) {
+    if (!file) return null;
+    let bitmap;
+    try { bitmap = await createImageBitmap(file); }
+    catch (_) { throw new Error('Não foi possível abrir a imagem ' + file.name + '. Use PNG ou JPG.'); }
+    try {
+      const scale = Math.min(1, 2048 / Math.max(bitmap.width, bitmap.height));
+      let width = Math.max(1, Math.round(bitmap.width * scale)), height = Math.max(1, Math.round(bitmap.height * scale));
+      const nearestPower = n => { let p = 1; while (p * 2 <= n) p *= 2; return p; };
+      width = Math.max(1, nearestPower(width)); height = Math.max(1, nearestPower(height));
+      const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.clearRect(0, 0, width, height); ctx.drawImage(bitmap, 0, 0, width, height);
+      const pixels = ctx.getImageData(0, 0, width, height);
+      return { width, height, data: new Uint8Array(pixels.data) };
+    } finally { bitmap.close?.(); }
+  }
+  function decodeDataUri(uri) {
+    const match = /^data:([^;,]+)?(;base64)?,(.*)$/s.exec(uri || '');
+    if (!match) throw new Error('Imagem embutida no GLB possui URI inválida.');
+    const mime = match[1] || 'application/octet-stream';
+    if (match[2]) { const raw = atob(match[3]); const bytes = new Uint8Array(raw.length); for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i); return { bytes, mime }; }
+    return { bytes: new TextEncoder().encode(decodeURIComponent(match[3])), mime };
+  }
+  async function bytesToPixels(bytes, mime) {
+    const blob = new Blob([bytes], { type: mime || 'image/png' });
+    const file = new File([blob], 'embedded-image', { type: blob.type });
+    return imageFileToPixels(file);
+  }
+  async function parseOBJ(file, files) {
+    const text = await file.text();
+    const vertices = [], uvs = [], normals = [];
+    const materials = new Map();
+    const materialLibraries = [];
+    let activeMaterial = 'default';
+    const faceRecords = [];
+    for (const raw of text.split(/\r?\n/)) {
+      const line = raw.trim(); if (!line || line[0] === '#') continue;
+      const parts = line.split(/\s+/); const tag = parts.shift();
+      if (tag === 'v' && parts.length >= 3) vertices.push(parts.slice(0, 3).map(Number));
+      else if (tag === 'vt' && parts.length >= 2) uvs.push(parts.slice(0, 2).map(Number));
+      else if (tag === 'vn' && parts.length >= 3) normals.push(parts.slice(0, 3).map(Number));
+      else if (tag === 'mtllib') materialLibraries.push(...parts);
+      else if (tag === 'usemtl') activeMaterial = parts.join(' ') || 'default';
+      else if (tag === 'f' && parts.length >= 3) faceRecords.push({ material: activeMaterial, refs: parts });
+    }
+    for (const libraryName of materialLibraries) {
+      const mtlFile = findSelectedFile(files, libraryName);
+      if (!mtlFile) continue;
+      let current = null;
+      for (const raw of (await mtlFile.text()).split(/\r?\n/)) {
+        const line = raw.trim(); if (!line || line[0] === '#') continue;
+        const p = line.split(/\s+/); const tag = p.shift();
+        if (tag === 'newmtl') { const name = p.join(' '); current = makeMaterial(name); materials.set(name, current); }
+        else if (current && tag === 'Kd' && p.length >= 3) current.color = [Math.round(Number(p[0]) * 255), Math.round(Number(p[1]) * 255), Math.round(Number(p[2]) * 255), current.color[3]];
+        else if (current && tag === 'd') current.color[3] = Math.round(Math.max(0, Math.min(1, Number(p[0]))) * 255);
+        else if (current && tag === 'Tr') current.color[3] = Math.round((1 - Math.max(0, Math.min(1, Number(p[0]))) ) * 255);
+        else if (current && tag === 'map_Kd') current._texturePath = p[p.length - 1];
+      }
+    }
+    const usedNames = new Set();
+    for (const material of materials.values()) {
+      if (material._texturePath) {
+        const texFile = findSelectedFile(files, material._texturePath);
+        if (texFile) {
+          material.texture = await imageFileToPixels(texFile);
+          material.textureName = safeTextureName(texFile.name, usedNames);
+        }
+      }
+      delete material._texturePath;
+    }
+    if (!materials.has('default')) materials.set('default', makeMaterial('default'));
+    const primitives = new Map();
+    const getPrimitive = name => {
+      if (!materials.has(name)) materials.set(name, makeMaterial(name));
+      if (!primitives.has(name)) primitives.set(name, { primitive: createPrimitive(materials.get(name)), vertexMap: new Map() });
+      return primitives.get(name);
+    };
+    const resolveIndex = (value, count) => { const n = Number(value); return n < 0 ? count + n : n - 1; };
+    for (const face of faceRecords) {
+      const entry = getPrimitive(face.material); const corners = [];
+      for (const ref of face.refs) {
+        const seg = ref.split('/');
+        const vi = resolveIndex(seg[0], vertices.length), ti = seg[1] ? resolveIndex(seg[1], uvs.length) : -1, ni = seg[2] ? resolveIndex(seg[2], normals.length) : -1;
+        if (vi < 0 || vi >= vertices.length) throw new Error('OBJ possui referência de vértice inválida.');
+        const key = vi + '/' + ti + '/' + ni;
+        let index = entry.vertexMap.get(key);
+        if (index === undefined) {
+          index = entry.primitive.positions.length / 3; entry.vertexMap.set(key, index);
+          entry.primitive.positions.push(...vertices[vi]);
+          entry.primitive.uvs.push(...(ti >= 0 && uvs[ti] ? uvs[ti] : [0, 0]));
+          entry.primitive.normals.push(...(ni >= 0 && normals[ni] ? normals[ni] : [0, 0, 0]));
+        }
+        corners.push(index);
+      }
+      for (let i = 1; i < corners.length - 1; i++) entry.primitive.indices.push(corners[0], corners[i], corners[i + 1]);
+    }
+    const result = [...primitives.values()].map(x => x.primitive).filter(p => p.indices.length);
+    if (!result.length) throw new Error('O OBJ não contém faces trianguláveis.');
+    return { primitives: result, warnings: materialLibraries.some(n => !findSelectedFile(files, n)) ? ['Alguns arquivos MTL não foram selecionados.'] : [] };
+  }
+  function mat4Multiply(a, b) {
+    const o = new Float64Array(16);
+    for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) o[c * 4 + r] = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3];
+    return o;
+  }
+  function nodeMatrix(node) {
+    if (node.matrix && node.matrix.length === 16) return new Float64Array(node.matrix);
+    const t = node.translation || [0, 0, 0], q = node.rotation || [0, 0, 0, 1], s = node.scale || [1, 1, 1];
+    const [x, y, z, w] = q;
+    return new Float64Array([
+      (1 - 2 * (y*y + z*z)) * s[0], (2 * (x*y + z*w)) * s[0], (2 * (x*z - y*w)) * s[0], 0,
+      (2 * (x*y - z*w)) * s[1], (1 - 2 * (x*x + z*z)) * s[1], (2 * (y*z + x*w)) * s[1], 0,
+      (2 * (x*z + y*w)) * s[2], (2 * (y*z - x*w)) * s[2], (1 - 2 * (x*x + y*y)) * s[2], 0,
+      t[0], t[1], t[2], 1
+    ]);
+  }
+  function transformPoint4(m, p) { return [m[0]*p[0]+m[4]*p[1]+m[8]*p[2]+m[12], m[1]*p[0]+m[5]*p[1]+m[9]*p[2]+m[13], m[2]*p[0]+m[6]*p[1]+m[10]*p[2]+m[14]]; }
+  function transformVector4(m, p) { return vec3Normalize(m[0]*p[0]+m[4]*p[1]+m[8]*p[2], m[1]*p[0]+m[5]*p[1]+m[9]*p[2], m[2]*p[0]+m[6]*p[1]+m[10]*p[2]); }
+  function accessorData(gltf, binary, accessorIndex) {
+    const accessor = gltf.accessors[accessorIndex]; if (!accessor) throw new Error('GLB referencia um accessor inexistente.');
+    const dims = { SCALAR:1, VEC2:2, VEC3:3, VEC4:4, MAT2:4, MAT3:9, MAT4:16 }[accessor.type];
+    const types = { 5120:[1,'getInt8',true], 5121:[1,'getUint8',false], 5122:[2,'getInt16',true], 5123:[2,'getUint16',false], 5125:[4,'getUint32',false], 5126:[4,'getFloat32',false] };
+    const type = types[accessor.componentType]; if (!dims || !type) throw new Error('Tipo de accessor GLB não suportado.');
+    const [size, method, signed] = type; const count = accessor.count; const result = new Float64Array(count * dims);
+    if (accessor.bufferView === undefined) return result;
+    const bv = gltf.bufferViews[accessor.bufferView]; if (!bv) throw new Error('BufferView GLB inválido.');
+    const base = (bv.byteOffset || 0) + (accessor.byteOffset || 0); const stride = bv.byteStride || size * dims;
+    const view = new DataView(binary);
+    for (let i = 0; i < count; i++) for (let c = 0; c < dims; c++) {
+      const off = base + i * stride + c * size; let value = view[method](off, true);
+      if (accessor.normalized && accessor.componentType !== 5126) value = signed ? Math.max(-1, value / (2 ** (size * 8 - 1) - 1)) : value / (2 ** (size * 8) - 1);
+      result[i * dims + c] = value;
+    }
+    return result;
+  }
+  async function parseGLB(file) {
+    const buffer = await file.arrayBuffer(); const view = new DataView(buffer);
+    if (view.byteLength < 20 || view.getUint32(0, true) !== 0x46546c67 || view.getUint32(4, true) !== 2) throw new Error('Arquivo GLB inválido ou diferente de glTF 2.0.');
+    let p = 12, json = null, binary = new ArrayBuffer(0);
+    while (p + 8 <= view.byteLength) {
+      const length = view.getUint32(p, true), type = view.getUint32(p + 4, true); p += 8;
+      if (p + length > view.byteLength) throw new Error('Chunk GLB incompleto.');
+      if (type === 0x4e4f534a) json = JSON.parse(new TextDecoder().decode(new Uint8Array(buffer, p, length)).replace(/\0+$/g, '').trim());
+      else if (type === 0x004e4942) binary = buffer.slice(p, p + length);
+      p += length;
+    }
+    if (!json || !json.meshes) throw new Error('O GLB não contém uma cena com malhas.');
+    const imagePixels = [];
+    for (const image of json.images || []) {
+      let bytes, mime = image.mimeType || 'image/png';
+      if (image.uri && image.uri.startsWith('data:')) { const decoded = decodeDataUri(image.uri); bytes = decoded.bytes; mime = decoded.mime; }
+      else if (image.bufferView !== undefined) { const bv = json.bufferViews[image.bufferView]; bytes = new Uint8Array(binary, bv.byteOffset || 0, bv.byteLength).slice(); }
+      else { imagePixels.push(null); continue; }
+      imagePixels.push(await bytesToPixels(bytes, mime));
+    }
+    const textures = json.textures || [], materials = json.materials || [];
+    const materialCache = new Map();
+    const getMaterial = async index => {
+      if (materialCache.has(index)) return materialCache.get(index);
+      const source = materials[index] || {}; const pbr = source.pbrMetallicRoughness || {};
+      const c = pbr.baseColorFactor || [1,1,1,1];
+      const mat = makeMaterial(source.name || 'material_' + index, c.map(v => Math.round(Math.max(0, Math.min(1, v)) * 255)));
+      const texIndex = pbr.baseColorTexture?.index;
+      if (texIndex !== undefined && textures[texIndex]) {
+        const imageIndex = textures[texIndex].source;
+        if (imagePixels[imageIndex]) { mat.texture = imagePixels[imageIndex]; mat.textureName = safeTextureName(json.images?.[imageIndex]?.name || source.name || 'texture_' + imageIndex, new Set()); }
+      }
+      materialCache.set(index, mat); return mat;
+    };
+    const primitives = [];
+    const sceneIndex = json.scene || 0; const scene = json.scenes?.[sceneIndex];
+    const roots = scene?.nodes || (json.nodes || []).map((n, i) => i).filter(i => !(json.nodes || []).some(other => (other.children || []).includes(i)));
+    const visited = new Set();
+    const walk = async (nodeIndex, parentMatrix) => {
+      if (visited.has(nodeIndex)) return; visited.add(nodeIndex);
+      const node = json.nodes?.[nodeIndex]; if (!node) return;
+      const world = mat4Multiply(parentMatrix, nodeMatrix(node));
+      if (node.mesh !== undefined) {
+        const mesh = json.meshes[node.mesh];
+        for (const source of mesh.primitives || []) {
+          if (source.extensions?.KHR_draco_mesh_compression) throw new Error('GLB usa Draco; exporte o modelo sem compressão Draco para converter.');
+          if (![4,5,6].includes(source.mode ?? 4)) continue;
+          const attrs = source.attributes || {}; if (attrs.POSITION === undefined) continue;
+          const pos = accessorData(json, binary, attrs.POSITION); const uv = attrs.TEXCOORD_0 !== undefined ? accessorData(json, binary, attrs.TEXCOORD_0) : new Float64Array(pos.length / 3 * 2);
+          const nor = attrs.NORMAL !== undefined ? accessorData(json, binary, attrs.NORMAL) : new Float64Array(pos.length);
+          const srcIndices = source.indices !== undefined ? Array.from(accessorData(json, binary, source.indices)) : Array.from({length:pos.length/3}, (_,i)=>i);
+          const indices = [];
+          if ((source.mode ?? 4) === 4) for (let i=0;i+2<srcIndices.length;i+=3) indices.push(srcIndices[i],srcIndices[i+1],srcIndices[i+2]);
+          else if ((source.mode ?? 4) === 5) for (let i=2;i<srcIndices.length;i++) { const a=srcIndices[i-2],b=srcIndices[i-1],c=srcIndices[i]; if (i%2) indices.push(b,a,c); else indices.push(a,b,c); }
+          else for (let i=2;i<srcIndices.length;i++) indices.push(srcIndices[0],srcIndices[i-1],srcIndices[i]);
+          const material = await getMaterial(source.material ?? -1); const prim = createPrimitive(material);
+          for (let i=0;i<pos.length;i+=3) { prim.positions.push(...transformPoint4(world,[pos[i],pos[i+1],pos[i+2]])); prim.normals.push(...transformVector4(world,[nor[i]||0,nor[i+1]||0,nor[i+2]||0])); prim.uvs.push(uv[i/3*2]||0,uv[i/3*2+1]||0); }
+          prim.indices = indices; if (prim.indices.length) primitives.push(prim);
+        }
+      }
+      for (const child of node.children || []) await walk(child, world);
+    };
+    for (const root of roots) await walk(root, new Float64Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]));
+    if (!primitives.length) throw new Error('Nenhuma malha triangular compatível foi encontrada no GLB.');
+    return { primitives, warnings: [] };
+  }
+  function balancedBlock(text, openIndex) {
+    let depth = 0, quoted = false, escaped = false;
+    for (let i = openIndex; i < text.length; i++) {
+      const ch = text[i];
+      if (quoted) { if (escaped) escaped = false; else if (ch === '\\') escaped = true; else if (ch === '"') quoted = false; continue; }
+      if (ch === '"') quoted = true; else if (ch === '{') depth++; else if (ch === '}' && --depth === 0) return text.slice(openIndex + 1, i);
+    }
+    return '';
+  }
+  function fbxArray(block, name) {
+    const re = new RegExp('(?:^|\\n)\\s*' + name + ':\\s*\\*?\\d*\\s*\\{\\s*a:\\s*', 'm'); const m = re.exec(block);
+    if (!m) return [];
+    const start = m.index + m[0].length; const end = block.indexOf('}', start); if (end < 0) return [];
+    return block.slice(start, end).split(',').map(v=>Number(v.trim())).filter(Number.isFinite);
+  }
+  function fbxLayerBlock(block, name) {
+    const re = new RegExp(name + ':\\s*\\d+\\s*\\{', 'g'); const m = re.exec(block); if (!m) return '';
+    return balancedBlock(block, block.indexOf('{', m.index));
+  }
+  function fbxString(block, key) { const re = new RegExp(key + ':\\s*"([^"]*)"'); const m = re.exec(block); return m ? m[1] : ''; }
+  function fbxMappingValues(block, key) { const re = new RegExp(key + ':\\s*"([^"]+)"'); const m = re.exec(block); return m ? m[1] : 'ByPolygonVertex'; }
+  async function parseFBXAscii(text, files) {
+    const geoRe = /Geometry:\s*(-?\d+)\s*,\s*"([^"]*)"\s*,\s*"Mesh"\s*\{/g;
+    const primitives = []; let match;
+    const imageMatch = /(?:FileName|RelativeFilename):\s*"([^"]+)"/g; const externalTextures = [];
+    while ((match = imageMatch.exec(text))) externalTextures.push(match[1]);
+    let fbxMaterial = makeMaterial('fbx_material');
+    const diffuse = /P:\s*"DiffuseColor"[^\n]*,\s*([\d.+-]+)\s*,\s*([\d.+-]+)\s*,\s*([\d.+-]+)/.exec(text);
+    if (diffuse) fbxMaterial.color = [Number(diffuse[1]),Number(diffuse[2]),Number(diffuse[3])].map(v=>Math.round(Math.max(0,Math.min(1,v))*255)).concat(255);
+    if (externalTextures.length) { const f = findSelectedFile(files, externalTextures[0]); if (f) { fbxMaterial.texture = await imageFileToPixels(f); fbxMaterial.textureName = safeTextureName(f.name,new Set()); } }
+    while ((match = geoRe.exec(text))) {
+      const open = text.indexOf('{', match.index); const block = balancedBlock(text, open);
+      const vertices = fbxArray(block,'Vertices'); const polygon = fbxArray(block,'PolygonVertexIndex');
+      if (vertices.length < 9 || polygon.length < 3) continue;
+      const uvBlock = fbxLayerBlock(block,'LayerElementUV'); const uvValues = fbxArray(uvBlock,'UV'); const uvIndices = fbxArray(uvBlock,'UVIndex');
+      const uvMapping = fbxMappingValues(uvBlock,'MappingInformationType'); const uvReference = fbxMappingValues(uvBlock,'ReferenceInformationType');
+      const normalBlock = fbxLayerBlock(block,'LayerElementNormal'); const normalValues = fbxArray(normalBlock,'Normals'); const normalIndices = fbxArray(normalBlock,'NormalsIndex');
+      const normalMapping = fbxMappingValues(normalBlock,'MappingInformationType'); const normalReference = fbxMappingValues(normalBlock,'ReferenceInformationType');
+      const prim = createPrimitive(makeMaterial(match[2].split('::').pop() || fbxMaterial.name, fbxMaterial.color));
+      if (fbxMaterial.texture) { prim.material.texture = fbxMaterial.texture; prim.material.textureName = fbxMaterial.textureName; }
+      let polygonRefs = [], polygonNo = 0, pv = 0;
+      const addCorner = sourceIndex => {
+        const vertex = sourceIndex * 3; const vertexIndex = sourceIndex;
+        prim.positions.push(vertices[vertex],vertices[vertex+1],vertices[vertex+2]);
+        let uvIndex = -1;
+        if (uvValues.length) {
+          const mapped = uvMapping === 'ByVertex' || uvMapping === 'ByVertice' ? vertexIndex : (uvMapping === 'ByPolygon' ? polygonNo : (uvMapping === 'AllSame' ? 0 : pv));
+          uvIndex = uvReference === 'IndexToDirect' ? (uvIndices[mapped] ?? mapped) : mapped;
+        }
+        if (uvIndex >= 0 && uvValues.length >= uvIndex*2+2) prim.uvs.push(uvValues[uvIndex*2],1-uvValues[uvIndex*2+1]); else prim.uvs.push(0,0);
+        let ni = -1;
+        if (normalValues.length) {
+          const mapped = normalMapping === 'ByVertex' || normalMapping === 'ByVertice' ? vertexIndex : (normalMapping === 'ByPolygon' ? polygonNo : (normalMapping === 'AllSame' ? 0 : pv));
+          ni = normalReference === 'IndexToDirect' ? (normalIndices[mapped] ?? mapped) : mapped;
+        }
+        if (ni >= 0 && normalValues.length >= ni*3+3) prim.normals.push(normalValues[ni*3],normalValues[ni*3+1],normalValues[ni*3+2]); else prim.normals.push(0,0,0);
+        pv++; return prim.positions.length/3-1;
+      };
+      for (const rawIndex of polygon) {
+        const isEnd = rawIndex < 0; const index = isEnd ? -rawIndex-1 : rawIndex;
+        if (index < 0 || index*3+2 >= vertices.length) throw new Error('FBX possui índice de vértice inválido.');
+        polygonRefs.push(addCorner(index));
+        if (isEnd) {
+          for (let j=1;j<polygonRefs.length-1;j++) prim.indices.push(polygonRefs[0],polygonRefs[j],polygonRefs[j+1]);
+          polygonRefs=[]; polygonNo++;
+        }
+      }
+      if (prim.indices.length) primitives.push(prim);
+      geoRe.lastIndex = open + block.length + 1;
+    }
+    if (!primitives.length) throw new Error('Não foi possível extrair malhas do FBX. Exporte como FBX ASCII ou use GLB.');
+    return { primitives, warnings: ['FBX convertido como malha estática; só o primeiro material/textura difusa é aproveitado. Rig, animações e pivôs não são preservados.'] };
+  }
+  async function readFBXBinary(buffer) {
+    const view = new DataView(buffer); const signature = 'Kaydara FBX Binary  \0\x1a\0';
+    const prefix = new TextDecoder('ascii').decode(new Uint8Array(buffer,0,Math.min(23,buffer.byteLength)));
+    if (!prefix.startsWith('Kaydara FBX Binary')) throw new Error('Assinatura FBX binária inválida.');
+    const version = view.getUint32(23,true); let pos=27; const wide=version>=7500; const nullLen=wide?25:13;
+    const readIndex = () => { if (wide) { const n=Number(view.getBigUint64(pos,true)); pos+=8; return n; } const n=view.getUint32(pos,true); pos+=4; return n; };
+    const readProperty = async () => {
+      const code=String.fromCharCode(view.getUint8(pos++));
+      if (code==='Y') { const v=view.getInt16(pos,true);pos+=2;return v; }
+      if (code==='C') { const v=view.getUint8(pos)!==0;pos++;return v; }
+      if (code==='I') { const v=view.getInt32(pos,true);pos+=4;return v; }
+      if (code==='F') { const v=view.getFloat32(pos,true);pos+=4;return v; }
+      if (code==='D') { const v=view.getFloat64(pos,true);pos+=8;return v; }
+      if (code==='L') { const v=Number(view.getBigInt64(pos,true));pos+=8;return v; }
+      if (code==='S'||code==='R') { const length=view.getUint32(pos,true);pos+=4;const bytes=new Uint8Array(buffer,pos,length);pos+=length;return code==='S'?new TextDecoder().decode(bytes):bytes; }
+      const arrayTypes={f:[4,'getFloat32'],d:[8,'getFloat64'],l:[8,'getBigInt64'],i:[4,'getInt32'],b:[1,'getUint8'],c:[1,'getUint8']};
+      if (arrayTypes[code]) {
+        const count=view.getUint32(pos,true),encoding=view.getUint32(pos+4,true),length=view.getUint32(pos+8,true);pos+=12;
+        let bytes=new Uint8Array(buffer,pos,length).slice();pos+=length;
+        if (encoding===1) {
+          if (!window.DecompressionStream) throw new Error('Este navegador não consegue descompactar arrays FBX.');
+          const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate'));
+          bytes=new Uint8Array(await new Response(stream).arrayBuffer());
+        } else if (encoding!==0) throw new Error('Codificação de array FBX não suportada.');
+        const [size,method]=arrayTypes[code],dv=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength),out=new Array(count);
+        if (bytes.length<count*size) throw new Error('Array FBX incompleto.');
+        for(let i=0;i<count;i++) out[i]=code==='l'?Number(dv[method](i*size,true)):dv[method](i*size,true);
+        return out;
+      }
+      throw new Error('Tipo de propriedade FBX não suportado: '+code);
+    };
+    const readNode = async () => {
+      const header=pos; if (pos+nullLen>view.byteLength) return null;
+      const endOffset=readIndex(),propertyCount=readIndex(),propertyLength=readIndex(),nameLength=view.getUint8(pos++);
+      if (!endOffset&&!propertyCount&&!propertyLength&&!nameLength) { pos=header+nullLen; return null; }
+      if (endOffset>view.byteLength||nameLength===0||nameLength>view.byteLength-pos) throw new Error('Estrutura de nó FBX corrompida.');
+      const name=new TextDecoder().decode(new Uint8Array(buffer,pos,nameLength));pos+=nameLength;
+      const properties=[];for(let i=0;i<propertyCount;i++) properties.push(await readProperty());
+      const children=[];while(pos<endOffset-nullLen) { const child=await readNode(); if(child) children.push(child); else if(pos>=endOffset) break; }
+      pos=endOffset;
+      return {name,properties,children};
+    };
+    const root={name:'Root',properties:[],children:[]};
+    while(pos+nullLen<view.byteLength) { const node=await readNode(); if(node) root.children.push(node); else if(pos>=view.byteLength-nullLen) break; }
+    return root;
+  }
+  function findFBXNodes(node, name, out=[]) { if(node.name===name) out.push(node); for(const c of node.children||[]) findFBXNodes(c,name,out); return out; }
+  function fbxChild(node,name) { return (node.children||[]).find(c=>c.name===name)||null; }
+  function fbxPropArray(node,name) { const n=fbxChild(node,name); return n&&Array.isArray(n.properties[0])?n.properties[0]:[]; }
+  async function parseFBXBinary(file) {
+    const tree=await readFBXBinary(await file.arrayBuffer());
+    const geoNodes=findFBXNodes(tree,'Geometry').filter(n=>String(n.properties[2]||'').includes('Mesh'));
+    const materials=findFBXNodes(tree,'Material'); const textures=findFBXNodes(tree,'Texture');
+    const material=makeMaterial(materials[0]?.properties[1]||'fbx_material');
+    const propNode=materials[0]&&findFBXNodes(materials[0],'P').find(n=>String(n.properties[0]).includes('DiffuseColor'));
+    if(propNode&&propNode.properties.length>=7) material.color=[propNode.properties[4],propNode.properties[5],propNode.properties[6]].map(v=>Math.round(Math.max(0,Math.min(1,v))*255)).concat(255);
+    const fileNodes=findFBXNodes(tree,'FileName');
+    const fileRef=fileNodes[0]?.properties[0];
+    const chosen=fileRef?findSelectedFile(selectedFileMap(CONVERT.sourceFiles),fileRef):null;
+    if(chosen){material.texture=await imageFileToPixels(chosen);material.textureName=safeTextureName(chosen.name,new Set());}
+    const primitives=[];
+    for(const geo of geoNodes){
+      const verts=fbxPropArray(geo,'Vertices'),poly=fbxPropArray(geo,'PolygonVertexIndex');if(verts.length<9||poly.length<3)continue;
+      const uvNode=findFBXNodes(geo,'LayerElementUV')[0],normalNode=findFBXNodes(geo,'LayerElementNormal')[0];
+      const uvVals=fbxPropArray(uvNode||{children:[]},'UV'),uvIdx=fbxPropArray(uvNode||{children:[]},'UVIndex');
+      const normalVals=fbxPropArray(normalNode||{children:[]},'Normals'),normalIdx=fbxPropArray(normalNode||{children:[]},'NormalsIndex');
+      const uvMap=String(fbxChild(uvNode||{},'MappingInformationType')?.properties[0]||'ByPolygonVertex');
+      const uvRef=String(fbxChild(uvNode||{},'ReferenceInformationType')?.properties[0]||'Direct');
+      const nMap=String(fbxChild(normalNode||{},'MappingInformationType')?.properties[0]||'ByPolygonVertex');
+      const nRef=String(fbxChild(normalNode||{},'ReferenceInformationType')?.properties[0]||'Direct');
+      const prim=createPrimitive(makeMaterial(String(geo.properties[1]||'geometry'),material.color));
+      if(material.texture){prim.material.texture=material.texture;prim.material.textureName=material.textureName;}
+      let polygonCorners=[],pv=0;
+      const startVertex=(index)=>{
+        if(index<0||index*3+2>=verts.length)throw new Error('FBX binário contém índice inválido.');
+        prim.positions.push(verts[index*3],verts[index*3+1],verts[index*3+2]);
+        const uvMapped=uvMap==='ByVertex'||uvMap==='ByVertice'?index:(uvMap==='ByPolygon'?polygonNo:(uvMap==='AllSame'?0:pv));
+        let ui=uvRef==='IndexToDirect'?(uvIdx[uvMapped]??uvMapped):uvMapped;
+        prim.uvs.push(...(uvVals.length>=ui*2+2?[uvVals[ui*2],1-uvVals[ui*2+1]]:[0,0]));
+        const normalMapped=nMap==='ByVertex'||nMap==='ByVertice'?index:(nMap==='ByPolygon'?polygonNo:(nMap==='AllSame'?0:pv));
+        let ni=nRef==='IndexToDirect'?(normalIdx[normalMapped]??normalMapped):normalMapped;
+        prim.normals.push(...(normalVals.length>=ni*3+3?normalVals.slice(ni*3,ni*3+3):[0,0,0]));pv++;
+        return prim.positions.length/3-1;
+      };
+      for(const raw of poly){const end=raw<0,idx=end?-raw-1:raw;polygonCorners.push(startVertex(idx));if(end){for(let j=1;j<polygonCorners.length-1;j++)prim.indices.push(polygonCorners[0],polygonCorners[j],polygonCorners[j+1]);polygonCorners=[];}}
+      if(prim.indices.length)primitives.push(prim);
+    }
+    if(!primitives.length)throw new Error('O FBX binário não contém malhas triangulares compatíveis.');
+    return {primitives,warnings:['FBX binário convertido como malha estática; só o primeiro material/textura difusa é aproveitado. Rig, animações e pivôs não são preservados.']};
+  }
+  async function parseSourceFiles(files) {
+    const list=Array.from(files||[]); if(!list.length)throw new Error('Selecione um arquivo OBJ, FBX ou GLB.');
+    const primary=list.find(f=>/\.(obj|fbx|glb)$/i.test(f.name));
+    if(!primary)throw new Error('Não encontrei o arquivo principal .OBJ, .FBX ou .GLB.');
+    const ext=primary.name.split('.').pop().toLowerCase();
+    if(ext==='obj')return parseOBJ(primary,selectedFileMap(list));
+    if(ext==='glb')return parseGLB(primary);
+    const buffer=await primary.arrayBuffer();
+    const isBinary=new TextDecoder('ascii').decode(new Uint8Array(buffer,0,Math.min(20,buffer.byteLength))).startsWith('Kaydara FBX Binary');
+    if(isBinary)return parseFBXBinary(primary);
+    return parseFBXAscii(await primary.text(),selectedFileMap(list));
+  }
+  function writeFixedString(writer,value,length) {
+    const bytes=new TextEncoder().encode(String(value||'')); const out=new Uint8Array(length); out.set(bytes.subarray(0,length)); writer.bytes(out);
+  }
+  function makeDFFGeometry(part) {
+    const count=part.positions.length/3, triCount=part.indices.length/3;
+    const sphere=[0,0,0]; let radius=0;
+    for(let i=0;i<count;i++){sphere[0]+=part.positions[i*3];sphere[1]+=part.positions[i*3+1];sphere[2]+=part.positions[i*3+2];}
+    sphere[0]/=count;sphere[1]/=count;sphere[2]/=count;
+    for(let i=0;i<count;i++)radius=Math.max(radius,Math.hypot(part.positions[i*3]-sphere[0],part.positions[i*3+1]-sphere[1],part.positions[i*3+2]-sphere[2]));
+    const w=new BinaryWriter(); w.u32(GEOM.POSITIONS|GEOM.TEXTURED|GEOM.PRELIT|GEOM.NORMALS);w.u32(triCount);w.u32(count);w.u32(1);
+    for(let i=0;i<count;i++){w.u8(255);w.u8(255);w.u8(255);w.u8(255);}
+    for(let i=0;i<count;i++){w.f32(part.uvs[i*2]||0);w.f32(1-(part.uvs[i*2+1]||0));}
+    for(let i=0;i<part.indices.length;i+=3){const a=part.indices[i],b=part.indices[i+1],c=part.indices[i+2];w.u16(b);w.u16(a);w.u16(0);w.u16(c);}
+    w.f32(sphere[0]);w.f32(sphere[1]);w.f32(sphere[2]);w.f32(radius);w.u32(1);w.u32(1);
+    for(let i=0;i<part.positions.length;i+=3){w.f32(part.positions[i]);w.f32(part.positions[i+1]);w.f32(part.positions[i+2]);}
+    for(let i=0;i<part.normals.length;i+=3){w.f32(part.normals[i]);w.f32(part.normals[i+1]);w.f32(part.normals[i+2]);}
+    const matStruct=new BinaryWriter();matStruct.u32(1);matStruct.i32(-1);
+    const material=part.material||makeMaterial('default');
+    const materialStruct=new BinaryWriter();materialStruct.u32(0);for(const c of material.color)materialStruct.u8(c);materialStruct.u32(0);materialStruct.f32(1);materialStruct.f32(1);materialStruct.f32(1);
+    const textureChildren=[];
+    if(material.textureName){const texStruct=new BinaryWriter();texStruct.u32(0x1101);textureChildren.push(rwChunk(RW_CHUNK.STRUCT,texStruct.finish()),rwString(material.textureName),rwString(''),rwChunk(RW_CHUNK.EXTENSION,new Uint8Array(0)));}
+    const matChunk=rwContainer(RW_CHUNK.MATERIAL,[rwChunk(RW_CHUNK.STRUCT,materialStruct.finish()),...(material.textureName?[rwContainer(RW_CHUNK.TEXTURE,textureChildren)]:[]),rwChunk(RW_CHUNK.EXTENSION,new Uint8Array(0))]);
+    const materialsChunk=rwContainer(RW_CHUNK.MATERIAL_LIST,[rwChunk(RW_CHUNK.STRUCT,matStruct.finish()),matChunk]);
+    const bin=new BinaryWriter();bin.u32(0);bin.u32(1);bin.u32(part.indices.length);bin.u32(part.indices.length);bin.u32(0);for(const idx of part.indices)bin.u32(idx);
+    const extension=rwContainer(RW_CHUNK.EXTENSION,[rwChunk(RW_CHUNK.BIN_MESH,bin.finish())]);
+    return rwContainer(RW_CHUNK.GEOMETRY,[rwChunk(RW_CHUNK.STRUCT,w.finish()),materialsChunk,extension]);
+  }
+  function splitPrimitive(primitive, axis, scale) {
+    const out=[];const sourceIndices=primitive.indices.length?primitive.indices:Array.from({length:primitive.positions.length/3},(_,i)=>i);
+    let map=new Map(),part={positions:[],uvs:[],normals:[],indices:[],material:primitive.material};
+    const flush=()=>{if(part.indices.length){if(!part.normals.some((v)=>v!==0))part.normals=generateNormals(part.positions,part.indices);else{let missing=false;for(let i=0;i<part.normals.length;i+=3)if(Math.hypot(part.normals[i],part.normals[i+1],part.normals[i+2])<1e-8){missing=true;break;}if(missing){const generated=generateNormals(part.positions,part.indices);for(let i=0;i<part.normals.length;i+=3)if(Math.hypot(part.normals[i],part.normals[i+1],part.normals[i+2])<1e-8)part.normals.splice(i,3,...generated.slice(i,i+3));}}out.push(part);}map=new Map();part={positions:[],uvs:[],normals:[],indices:[],material:primitive.material};};
+    for(let i=0;i+2<sourceIndices.length;i+=3){const tri=sourceIndices.slice(i,i+3);let needed=0;for(const v of tri)if(!map.has(v))needed++;if(map.size+needed>65000)flush();
+      for(const v of tri){let local=map.get(v);if(local===undefined){local=map.size;map.set(v,local);const p=v*3,uv=v*2;let x=primitive.positions[p],y=primitive.positions[p+1],z=primitive.positions[p+2];if(axis==='y'){const oldY=y;y=-z;z=oldY;}x*=scale;y*=scale;z*=scale;part.positions.push(x,y,z);part.uvs.push(primitive.uvs[uv]||0,primitive.uvs[uv+1]||0);let nx=primitive.normals[p]||0,ny=primitive.normals[p+1]||0,nz=primitive.normals[p+2]||0;if(axis==='y'){const oldNy=ny;ny=-nz;nz=oldNy;}part.normals.push(nx,ny,nz);}part.indices.push(local);}
+    }
+    flush();return out;
+  }
+  function buildDFF(model, axis, scale) {
+    const parts=[];for(const primitive of model.primitives)parts.push(...splitPrimitive(primitive,axis,scale));
+    if(!parts.length)throw new Error('Não existe geometria exportável.');
+    const frameStruct=new BinaryWriter();frameStruct.u32(1);
+    for(const v of [1,0,0,0,1,0,0,0,1,0,0,0])frameStruct.f32(v);frameStruct.i32(-1);frameStruct.u32(0);
+    const frame=rwContainer(RW_CHUNK.FRAME_LIST,[rwChunk(RW_CHUNK.STRUCT,frameStruct.finish()),rwChunk(RW_CHUNK.EXTENSION,new Uint8Array(0))]);
+    const geometryChildren=parts.map(makeDFFGeometry);const geomListStruct=new BinaryWriter();geomListStruct.u32(geometryChildren.length);
+    const geomList=rwContainer(RW_CHUNK.GEOMETRY_LIST,[rwChunk(RW_CHUNK.STRUCT,geomListStruct.finish()),...geometryChildren]);
+    const atomics=[];
+    for(let i=0;i<parts.length;i++){const st=new BinaryWriter();st.u32(0);st.u32(i);st.u32(5);st.u32(0);atomics.push(rwContainer(RW_CHUNK.ATOMIC,[rwChunk(RW_CHUNK.STRUCT,st.finish()),rwChunk(RW_CHUNK.EXTENSION,new Uint8Array(0))]));}
+    const clumpStruct=new BinaryWriter();clumpStruct.u32(parts.length);clumpStruct.u32(0);clumpStruct.u32(0);
+    return rwContainer(RW_CHUNK.CLUMP,[rwChunk(RW_CHUNK.STRUCT,clumpStruct.finish()),frame,geomList,...atomics,rwChunk(RW_CHUNK.EXTENSION,new Uint8Array(0))]);
+  }
+  function resizePixels(data,width,height,nextWidth,nextHeight) {
+    const source=document.createElement('canvas');source.width=width;source.height=height;source.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(data),width,height),0,0);
+    const target=document.createElement('canvas');target.width=nextWidth;target.height=nextHeight;const ctx=target.getContext('2d',{willReadFrequently:true});ctx.drawImage(source,0,0,nextWidth,nextHeight);return new Uint8Array(ctx.getImageData(0,0,nextWidth,nextHeight).data);
+  }
+  function buildTXD(model) {
+    const textureMap=new Map();for(const p of model.primitives){const m=p.material;if(m?.texture&&m.textureName)textureMap.set(m.textureName,m.texture);}
+    const entries=[...textureMap.entries()];if(entries.length>65535)throw new Error('O TXD ultrapassa o limite de quantidade de texturas.');
+    const nativeChunks=[];
+    for(const [name,texture] of entries){let width=texture.width,height=texture.height,data=texture.data;const mips=[];
+      while(true){const bgra=new Uint8Array(width*height*4);for(let i=0;i<width*height;i++){bgra[i*4]=data[i*4+2];bgra[i*4+1]=data[i*4+1];bgra[i*4+2]=data[i*4];bgra[i*4+3]=data[i*4+3];}mips.push(bgra);if(width===1&&height===1)break;const nw=Math.max(1,width>>1),nh=Math.max(1,height>>1);data=resizePixels(data,width,height,nw,nh);width=nw;height=nh;}
+      const first=texture;const w=new BinaryWriter();w.u32(9);w.u32(0x1101);writeFixedString(w,name,32);writeFixedString(w,'',32);w.u32(0x0500);w.u32(D3D.A8R8G8B8);w.u16(first.width);w.u16(first.height);w.u8(32);w.u8(mips.length);w.u8(4);w.u8(1);
+      for(const mip of mips){w.u32(mip.length);w.bytes(mip);}
+      nativeChunks.push(rwContainer(RW_CHUNK.TEXTURE_NATIVE,[rwChunk(RW_CHUNK.STRUCT,w.finish()),rwChunk(RW_CHUNK.EXTENSION,new Uint8Array(0))]));
+    }
+    const st=new BinaryWriter();st.u16(entries.length);st.u16(2);
+    return rwContainer(RW_CHUNK.TEXTURE_DICTIONARY,[rwChunk(RW_CHUNK.STRUCT,st.finish()),...nativeChunks,rwChunk(RW_CHUNK.EXTENSION,new Uint8Array(0))]);
+  }
+  function downloadOutput(blob, name) {
+    if (typeof viewerCanExport === 'function' && !viewerCanExport()) return false;
+    const url=URL.createObjectURL(blob);CONVERT.objectURLs.push(url);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+    if (typeof consumeViewerExport === 'function') consumeViewerExport();
+    return true;
+  }
+  async function convertSource() {
+    const files=CONVERT.sourceFiles;if(!files||!files.length){setStatus('Selecione um arquivo OBJ, FBX ou GLB.','warn');return;}
+    const button=$('convertSource');button.disabled=true;button.textContent='CONVERTENDO...';$('convertStatus').textContent='Lendo geometria, materiais e texturas...';
+    try{
+      const result=await parseSourceFiles(files);const axis=$('sourceAxis').value;const scale=Math.max(0.0001,Math.min(10000,Number($('sourceScale').value)||1));
+      const dff=buildDFF(result,axis,scale),txd=buildTXD(result);
+      const base=(Array.from(files).find(f=>/\.(obj|fbx|glb)$/i.test(f.name)).name).replace(/\.[^.]+$/,'').replace(/[^a-zA-Z0-9_-]/g,'_')||'converted_model';
+      const dffName=base+'.dff',txdName=base+'.txd';
+      const dffBlob=new Blob([dff],{type:'application/octet-stream'}),txdBlob=new Blob([txd],{type:'application/octet-stream'});
+      const dffFile=new File([dffBlob],dffName,{type:dffBlob.type}),txdFile=new File([txdBlob],txdName,{type:txdBlob.type});
+      const newModel=await runParserWorker('dff',await dffFile.arrayBuffer());const newTxd=await runParserWorker('txd',await txdFile.arrayBuffer());
+      const state=activeState();state.dffFile=dffFile;state.txdFile=txdFile;state.model=newModel;state.txd=newTxd;
+      CONVERT.outputDFF=dffBlob;CONVERT.outputTXD=txdBlob;CONVERT.outputNames={dff:dffName,txd:txdName};
+      $('downloadDFF').disabled=false;$('downloadTXD').disabled=false;$('downloadBoth').disabled=false;
+      $('convertStatus').textContent='Convertido: '+state.model.vertexCount.toLocaleString('pt-BR')+' vértices, '+state.model.triangleCount.toLocaleString('pt-BR')+' triângulos e '+state.txd.textures.size+' texturas.';
+      refreshCurrent();if(result.warnings?.length)setStatus('Conversão concluída. '+result.warnings.join(' '),'warn');else setStatus('Conversão OBJ/FBX/GLB concluída. DFF e TXD gerados.','good');
+    }catch(error){$('convertStatus').textContent='Falha: '+error.message;setStatus('Falha na conversão: '+error.message,'error');}
+    finally{button.disabled=false;button.textContent='CONVERTER PARA DFF + TXD';}
+  }
+  function initConverter() {
+    const drop=$('sourceDrop'),input=$('sourceInput');
+    drop.addEventListener('click',()=>input.click());
+    drop.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();input.click();}});
+    const showFiles=(files)=>{CONVERT.sourceFiles=Array.from(files||[]);CONVERT.outputDFF=null;CONVERT.outputTXD=null;for(const id of ['downloadDFF','downloadTXD','downloadBoth'])$(id).disabled=true;const primary=CONVERT.sourceFiles.find(f=>/\.(obj|fbx|glb)$/i.test(f.name));$('sourceFileName').textContent=primary?primary.name:'Nenhum modelo selecionado';$('sourceFileMeta').textContent=CONVERT.sourceFiles.length+' arquivo(s) selecionado(s) · '+fmtBytes(CONVERT.sourceFiles.reduce((s,f)=>s+f.size,0));};
+    input.addEventListener('change',()=>showFiles(input.files));
+    drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('dragover');});drop.addEventListener('dragleave',()=>drop.classList.remove('dragover'));
+    drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('dragover');if(e.dataTransfer?.files?.length)showFiles(e.dataTransfer.files);});
+    $('convertSource').addEventListener('click',convertSource);
+    $('downloadDFF').addEventListener('click',()=>{if(CONVERT.outputDFF)downloadOutput(CONVERT.outputDFF,CONVERT.outputNames.dff);});
+    $('downloadTXD').addEventListener('click',()=>{if(CONVERT.outputTXD)downloadOutput(CONVERT.outputTXD,CONVERT.outputNames.txd);});
+    $('downloadBoth').addEventListener('click',async()=>{if(viewerLicense?.plan==='A1'){const entries=[];if(CONVERT.outputDFF)entries.push({name:CONVERT.outputNames.dff,data:new Uint8Array(await CONVERT.outputDFF.arrayBuffer())});if(CONVERT.outputTXD)entries.push({name:CONVERT.outputNames.txd,data:new Uint8Array(await CONVERT.outputTXD.arrayBuffer())});if(entries.length)downloadOutput(makeStoredZip(entries),'converted-assets.zip');return;}if(CONVERT.outputDFF)downloadOutput(CONVERT.outputDFF,CONVERT.outputNames.dff);if(CONVERT.outputTXD)downloadOutput(CONVERT.outputTXD,CONVERT.outputNames.txd);});
+  }
+
+
+  // NovaPlayHost: licença SL2 Ed25519 vinculada exclusivamente ao MTA Asset Viewer.
+  const VIEWER_TOKEN_PUBLIC_KEY = '9-OpIm5pbKDN1pkULRHELfWn5PFTnkHf_2H0ETLLx6A';
+  const VIEWER_LICENSE_KEY = 'novaplayhost_mta_asset_viewer_license_v1';
+  const VIEWER_PLANS = {A1:{days:null,label:'1 exportação'},W7:{days:7,label:'7 dias'},M30:{days:30,label:'30 dias'},H6:{days:180,label:'6 meses'},Y1:{days:365,label:'1 ano'},PM:{days:null,label:'Permanente'}};
+  let viewerLicense = null;
+  function viewerCanExport(){if(!viewerLicense)return false;if(viewerLicense.plan==='A1'&&viewerLicense.used){setStatus('Este token A1 já foi utilizado para uma exportação.','warn');const s=$('packageStatus');if(s)s.textContent='O token A1 já foi usado. Ative um novo token para exportar novamente.';return false;}return true;}
+  function consumeViewerExport(){if(viewerLicense?.plan!=='A1'||viewerLicense.used)return;viewerLicense.used=true;try{localStorage.setItem(VIEWER_LICENSE_KEY,JSON.stringify(viewerLicense));}catch(error){console.warn('Não foi possível salvar o consumo local do token A1.',error);}setStatus('Exportação A1 utilizada neste navegador.','good');}
+  function viewerB64UrlToBytes(value){const base=value.replace(/-/g,'+').replace(/_/g,'/');const padded=base+'='.repeat((4-base.length%4)%4);return Uint8Array.from(atob(padded),c=>c.charCodeAt(0));}
+  async function verifyViewerToken(token){
+    const parts=String(token||'').trim().replace(/\s+/g,'').split('.');
+    if(parts.length!==3||parts[0]!=='SL2'||! /^[A-Za-z0-9_-]{30,240}$/.test(parts[1])||! /^[A-Za-z0-9_-]{86}$/.test(parts[2]))return {ok:false,message:'Formato do token inválido.'};
+    try{
+      const payload=JSON.parse(new TextDecoder().decode(viewerB64UrlToBytes(parts[1])));
+      const plan=VIEWER_PLANS[payload.plan];const issued=Date.parse(payload.issuedAt);
+      if(payload.v!==2||payload.app!=='assetviewer'||!plan||payload.days!==plan.days||typeof payload.nonce!=='string'||payload.nonce.length<16||!Number.isFinite(issued)||issued>Date.now()+300000)return {ok:false,message:'Token não pertence ao MTA Asset Viewer ou possui dados inválidos.'};
+      const pub=await crypto.subtle.importKey('raw',viewerB64UrlToBytes(VIEWER_TOKEN_PUBLIC_KEY),{name:'Ed25519'},false,['verify']);
+      const valid=await crypto.subtle.verify({name:'Ed25519'},pub,viewerB64UrlToBytes(parts[2]),new TextEncoder().encode('SL2.'+parts[1]));
+      if(!valid)return {ok:false,message:'Assinatura inválida. O token não foi emitido pela chave confiável.'};
+      if(plan.days!==null&&Date.now()>issued+plan.days*86400000)return {ok:false,message:'Este token expirou. Solicite renovação pelo Discord oficial.'};
+      return {ok:true,payload,plan,issuedAt:issued,token:parts.join('.')};
+    }catch(error){console.error('Token Viewer inválido',error);return {ok:false,message:'Não foi possível validar a assinatura neste navegador.'};}
+  }
+  function setViewerLicenseStatus(message,good=false){const el=$('viewerLicenseStatus');if(el){el.textContent=message;el.style.color=good?'#83d7ac':'#f2b4a8';}}
+  function showViewerApp(license){viewerLicense=license;$('viewerLicenseGate').style.display='none';$('app').style.display='block';}
+  async function activateViewerLicense(){
+    const button=$('viewerActivateLicense');button.disabled=true;setViewerLicenseStatus('Verificando assinatura...');
+    try{const result=await verifyViewerToken($('viewerLicenseToken').value);if(!result.ok){setViewerLicenseStatus(result.message);return;}
+      const saved={token:result.token,tokenId:result.payload.nonce,plan:result.payload.plan,issuedAt:result.issuedAt,used:result.payload.plan==='A1'?false:undefined};
+      localStorage.setItem(VIEWER_LICENSE_KEY,JSON.stringify(saved));showViewerApp(saved);setViewerLicenseStatus('Licença ativada: '+result.plan.label,true);
+    }catch(error){setViewerLicenseStatus('Falha ao salvar a licença neste navegador.');}finally{button.disabled=false;}
+  }
+  async function initViewerLicenseGate(){
+    $('viewerActivateLicense').addEventListener('click',activateViewerLicense);
+    $('viewerLicenseToken').addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')activateViewerLicense();});
+    if(!window.crypto?.subtle||!window.isSecureContext){setViewerLicenseStatus('Abra o site em HTTPS ou localhost para validar tokens com Web Crypto.');return;}
+    try{const saved=JSON.parse(localStorage.getItem(VIEWER_LICENSE_KEY)||'null');if(saved?.token){const result=await verifyViewerToken(saved.token);if(result.ok){const normalized={token:result.token,tokenId:result.payload.nonce,plan:result.payload.plan,issuedAt:result.issuedAt,used:result.payload.plan==='A1'&&saved.used===true};showViewerApp(normalized);setViewerLicenseStatus(normalized.plan==='A1'&&normalized.used?'Acesso A1 já exportado neste navegador.':'Licença ativa: '+result.plan.label,true);return;}localStorage.removeItem(VIEWER_LICENSE_KEY);setViewerLicenseStatus(result.message);}}
+    catch(error){console.warn('Licença local indisponível',error);}
+  }
+
+  // ZIP Store: cria um ZIP sem recomprimir nem alterar os bytes dos assets originais.
+  const ZIP_CRC_TABLE=(()=>{const table=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);table[n]=c>>>0;}return table;})();
+  function zipCRC32(bytes){let crc=0xFFFFFFFF;for(const b of bytes)crc=ZIP_CRC_TABLE[(crc^b)&255]^(crc>>>8);return (crc^0xFFFFFFFF)>>>0;}
+  function makeStoredZip(files){
+    const encoder=new TextEncoder(),locals=[],centrals=[];let offset=0;
+    for(const file of files){const name=encoder.encode(file.name),data=file.data,crc=zipCRC32(data);const lh=new Uint8Array(30+name.length),lv=new DataView(lh.buffer);lv.setUint32(0,0x04034b50,true);lv.setUint16(4,20,true);lv.setUint16(6,0x0800,true);lv.setUint16(8,0,true);lv.setUint16(10,0,true);lv.setUint16(12,0x0021,true);lv.setUint32(14,crc,true);lv.setUint32(18,data.length,true);lv.setUint32(22,data.length,true);lv.setUint16(26,name.length,true);lv.setUint16(28,0,true);lh.set(name,30);locals.push(lh,data);
+      const ch=new Uint8Array(46+name.length),cv=new DataView(ch.buffer);cv.setUint32(0,0x02014b50,true);cv.setUint16(4,20,true);cv.setUint16(6,20,true);cv.setUint16(8,0x0800,true);cv.setUint16(10,0,true);cv.setUint16(12,0,true);cv.setUint16(14,0x0021,true);cv.setUint32(16,crc,true);cv.setUint32(20,data.length,true);cv.setUint32(24,data.length,true);cv.setUint16(28,name.length,true);cv.setUint16(30,0,true);cv.setUint16(32,0,true);cv.setUint16(34,0,true);cv.setUint16(36,0,true);cv.setUint32(38,0,true);cv.setUint32(42,offset,true);ch.set(name,46);centrals.push(ch);offset+=lh.length+data.length;
+    }
+    const centralSize=centrals.reduce((n,x)=>n+x.length,0),end=new Uint8Array(22),ev=new DataView(end.buffer);ev.setUint32(0,0x06054b50,true);ev.setUint16(4,0,true);ev.setUint16(6,0,true);ev.setUint16(8,files.length,true);ev.setUint16(10,files.length,true);ev.setUint32(12,centralSize,true);ev.setUint32(16,offset,true);ev.setUint16(20,0,true);
+    return new Blob([...locals,...centrals,end],{type:'application/zip'});
+  }
+  function safePackageName(value){return String(value||'mta_resource').trim().replace(/[^a-zA-Z0-9_-]+/g,'_').replace(/^_+|_+$/g,'').slice(0,40)||'mta_resource';}
+  function luaQuote(value){return '"'+String(value).replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"';}
+  function buildMetaXML(files,resourceName){return '<?xml version="1.0" encoding="UTF-8"?>\n<meta>\n    <info author="NovaPlayHost" name="'+resourceName.replace(/[&<>"']/g,'')+'" version="1.0.0" type="script" />\n'+files.map(f=>'    <file src="'+f+'" />').join('\n')+'\n    <script src="client.lua" type="client" />\n</meta>\n';}
+  function buildClientLua(modelId,hasTxd,hasCol,alpha){
+    const lines=['-- Resource gerado pelo NovaPlayHost MTA Asset Viewer','-- Ordem de carregamento recomendada: COL -> TXD -> DFF','local modelID = '+modelId,'addEventHandler("onClientResourceStart", resourceRoot, function()'];
+    if(hasCol)lines.push('    local col = engineLoadCOL("model.col")','    if col then','        engineReplaceCOL(col, modelID)','    else','        outputDebugString("[NovaPlayHost] Falha ao carregar model.col", 1)','    end');
+    if(hasTxd)lines.push('    local txd = engineLoadTXD("model.txd", false)','    if txd then','        engineImportTXD(txd, modelID)','    else','        outputDebugString("[NovaPlayHost] Falha ao carregar model.txd", 1)','    end');
+    lines.push('    local dff = engineLoadDFF("model.dff")','    if dff then','        engineReplaceModel(dff, modelID, '+(alpha?'true':'false')+')','    else','        outputDebugString("[NovaPlayHost] Falha ao carregar model.dff", 1)','    end','end)');return lines.join('\n')+'\n';
+  }
+  async function buildMtaResource(){
+    const status=$('packageStatus'),button=$('buildMtaResource');if(!viewerCanExport())return;const dff=$('packageDff').files?.[0],txd=$('packageTxd').files?.[0],col=$('packageCol').files?.[0];
+    const type=$('packageType').value,modelId=Number($('packageModelId').value),valid=Number.isInteger(modelId)&&(type==='vehicle'?(modelId>=400&&modelId<=611):(modelId>=0&&modelId<=312&&![74,149,208].includes(modelId)));
+    if(!dff||!dff.name.toLowerCase().endsWith('.dff')){status.textContent='Selecione um arquivo DFF válido.';return;}
+    if(txd&&!txd.name.toLowerCase().endsWith('.txd')){status.textContent='O arquivo de textura deve terminar em .txd.';return;}
+    if(col&&!col.name.toLowerCase().endsWith('.col')){status.textContent='O arquivo de colisão deve terminar em .col.';return;}
+    if(!valid){status.textContent=type==='vehicle'?'Informe um ID de veículo entre 400 e 611.':'Informe um ID de skin válido entre 0 e 312 (74, 149 e 208 não são usados).';return;}
+    button.disabled=true;button.textContent='MONTANDO RESOURCE...';status.textContent='Lendo os assets originais e montando os arquivos MTA...';
+    try{
+      const resourceName=safePackageName($('packageResourceName').value||((type==='vehicle'?'novaplay_vehicle_':'novaplay_skin_')+modelId));
+      const entries=[{name:'model.dff',data:new Uint8Array(await dff.arrayBuffer())}];
+      const metaFiles=['model.dff'];
+      if(txd){entries.push({name:'model.txd',data:new Uint8Array(await txd.arrayBuffer())});metaFiles.push('model.txd');}
+      if(col){entries.push({name:'model.col',data:new Uint8Array(await col.arrayBuffer())});metaFiles.push('model.col');}
+      entries.push({name:'meta.xml',data:new TextEncoder().encode(buildMetaXML(metaFiles,resourceName))});
+      entries.push({name:'client.lua',data:new TextEncoder().encode(buildClientLua(modelId,Boolean(txd),Boolean(col),$('packageAlpha').checked))});
+      const zip=makeStoredZip(entries);const hash=await crypto.subtle.digest('SHA-256',entries[0].data);const hashHex=Array.from(new Uint8Array(hash)).map(x=>x.toString(16).padStart(2,'0')).join('');
+      downloadOutput(zip,resourceName+'.zip');status.textContent='Resource gerado: '+resourceName+'.zip · DFF '+fmtBytes(dff.size)+(txd?' · TXD '+fmtBytes(txd.size):' · sem TXD')+(col?' · COL '+fmtBytes(col.size):'')+' · SHA-256 DFF '+hashHex+'. Arquivos de asset copiados sem alteração.';setStatus('Resource MTA:SA pronto para baixar.','good');
+    }catch(error){console.error(error);status.textContent='Falha ao criar o ZIP: '+(error.message||'erro desconhecido');setStatus('Falha ao empacotar resource.','error');}
+    finally{button.disabled=false;button.textContent='GERAR RESOURCE MTA:SA (.ZIP)';}
+  }
+  function initMtaResourceBuilder(){
+    const updateType=()=>{const skin=$('packageType').value==='skin';$('packageModelLabel').textContent=skin?'ID DA SKIN (0–312)':'ID DO VEÍCULO (400–611)';$('packageModelId').min=skin?'0':'400';$('packageModelId').max=skin?'312':'611';$('packageModelId').value=skin?'0':'411';$('packageResourceName').value=skin?'novaplay_skin_0':'novaplay_vehicle_411';};
+    $('packageType').addEventListener('change',updateType);
+    for(const [id,labelId,ext] of [['packageDff','packageDffName','.dff'],['packageTxd','packageTxdName','.txd'],['packageCol','packageColName','.col']])$(id).addEventListener('change',()=>{const f=$(id).files?.[0];$(labelId).textContent=f?f.name+' · '+fmtBytes(f.size):'Nenhum '+ext.toUpperCase()+' selecionado';});
+    $('buildMtaResource').addEventListener('click',buildMtaResource);
+  }
+
+  initViewerLicenseGate();
+  initMtaResourceBuilder();
+  setupDrop('dffDrop', 'dffInput', importDFF);
+  initConverter();
+  setupDrop('txdDrop', 'txdInput', importTXD);
+  setupControls();
+  if (initRenderer()) {
+    resizeCanvas();
+    if (window.ResizeObserver) new ResizeObserver(resizeCanvas).observe($('viewportWrap'));
+  }
+})();
+</script>
+<div class="nph-watermark" aria-hidden="true">NovaPlayHost</div>
+<footer class="nph-footer" id="novaplayhost-footer">
+ <div class="nph-footer-inner">
+  <div class="nph-footer-grid">
+   <div class="nph-footer-brand"><strong>NovaPlayHost</strong><p>Ferramentas, plataformas e recursos digitais com suporte pelo canal oficial.</p><span class="nph-watermark-label">NovaPlayHost · Conteúdo protegido</span></div>
+   <section class="nph-footer-col"><h3>Links rápidos</h3><a href="#viewerTop">Início</a><a href="#viewerTop">Visualizador</a><a href="#mtaConverter">Conversor 3D</a><a href="#mtaResourceBuilder">Gerador de resource</a><a href="../index.html">Portal NovaPlayHost</a><a href="../lumora/index.html">Lumora</a><a href="../scriptlab/index.html">ScriptLab</a></section><section class="nph-footer-col"><h3>Redes sociais</h3><a href="https://discord.gg/bsYX83YYmt">Discord</a></section><section class="nph-footer-col"><h3>Contato</h3><a href="https://discord.gg/bsYX83YYmt">Falar com a equipe</a><a href="https://discord.gg/bsYX83YYmt">Suporte e chamados</a></section><section class="nph-footer-col"><h3>Institucional</h3><a href="./legal.html#termos">Termos de Uso</a><a href="./legal.html#privacidade">Privacidade</a><a href="./legal.html#reembolso">Reembolso</a><a href="./legal.html#cookies">Cookies</a></section>
+  </div>
+  <div class="nph-footer-warning"><strong>AVISO DE PROPRIEDADE:</strong> é proibido plagiar, copiar, redistribuir gratuitamente ou vender materiais proprietários da NovaPlayHost fora do site oficial sem autorização expressa. Também é proibido acessar, extrair ou explorar arquivos restritos sem autorização da NovaPlayHost e, quando aplicável, do respectivo titular dos direitos. Esta regra não alcança arquivos do usuário nem usos autorizados por lei.</div>
+  <div class="nph-footer-bottom"><span>© 2026 <strong>NovaPlayHost</strong>. Todos os direitos reservados.</span><span>Contato e suporte: <a href="https://discord.gg/bsYX83YYmt" target="_blank" rel="noopener noreferrer">Discord oficial</a></span><span>Powered by <strong>NovaHost</strong> · Versão <strong>v1.1.0</strong></span></div>
+ </div>
+</footer>
+</body>
+</html>
