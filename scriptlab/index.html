@@ -1882,6 +1882,10 @@ end)</textarea>
     if (savedUser && hasActiveAccess(savedUser)) {
       if (savedUser.learning) { renderDashboard(); showPage('dashboard'); }
       else showAssessment();
+    } else if (savedUser) {
+      updateNavState();
+      showPage('access');
+      showAlert('activationAlert', 'Sua conta continua reconhecida, mas a licença expirou. Valide um novo token para retomar as aulas.');
     } else {
       activeUser = null;
       store.currentUser = null;
