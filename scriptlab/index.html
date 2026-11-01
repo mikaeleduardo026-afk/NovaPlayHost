@@ -374,7 +374,7 @@ h2 { font-size: calc(34px * var(--site-heading-scale)); line-height: 1.15; lette
 
 </style>
 <style id="novaplayhost-brand-style">
-.nph-watermark{position:fixed;z-index:8;pointer-events:none;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-18deg);font:900 clamp(46px,10vw,116px)/1 system-ui,sans-serif;letter-spacing:.08em;white-space:nowrap;color:rgba(135,164,215,.035);text-shadow:0 1px 0 rgba(255,255,255,.015)}
+.nph-central-link{white-space:nowrap;text-decoration:none;font-size:11px;padding:9px 11px}@media(max-width:900px){.nph-central-link{display:none}}.nph-watermark{position:fixed;z-index:8;pointer-events:none;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-18deg);font:900 clamp(46px,10vw,116px)/1 system-ui,sans-serif;letter-spacing:.08em;white-space:nowrap;color:rgba(135,164,215,.035);text-shadow:0 1px 0 rgba(255,255,255,.015)}
 .nph-footer{position:relative;z-index:9;margin:48px 0 0;padding:34px 22px 20px;border-top:1px solid rgba(130,155,190,.22);background:rgba(8,15,28,.88);color:#dce7f7;font:14px/1.55 Inter,system-ui,-apple-system,Segoe UI,sans-serif;backdrop-filter:blur(12px)}
 .nph-footer *{box-sizing:border-box}.nph-footer-inner{max-width:1180px;margin:0 auto}.nph-footer-grid{display:grid;grid-template-columns:1.4fr repeat(4,minmax(120px,1fr));gap:25px}.nph-footer-brand strong{font-size:18px;letter-spacing:.09em;color:#fff}.nph-footer-brand p{max-width:290px;color:#9eafc7;font-size:12px;margin:9px 0 12px}.nph-footer-brand .nph-watermark-label{display:inline-block;color:#9bb5ff;font-weight:900;font-size:10px;letter-spacing:.2em;text-transform:uppercase}.nph-footer-col h3{margin:2px 0 12px;color:#fff;font-size:12px;letter-spacing:.1em;text-transform:uppercase}.nph-footer-col a{display:block;width:max-content;max-width:100%;margin:7px 0;color:#aebdd2;text-decoration:none;font-size:12px}.nph-footer-col a:hover{color:#fff;text-decoration:underline}.nph-footer-bottom{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;border-top:1px solid rgba(130,155,190,.18);margin-top:25px;padding-top:17px;color:#91a2ba;font-size:11px}.nph-footer-bottom strong{color:#dce7f7}.nph-footer-warning{margin-top:15px;padding:11px 13px;border-left:3px solid #d59a50;background:rgba(213,154,80,.08);color:#c7b99f;font-size:11px;border-radius:0 8px 8px 0}.nph-footer a:focus-visible{outline:2px solid #8eacff;outline-offset:3px}
 @media(max-width:900px){.nph-footer-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.nph-footer-brand{grid-column:1/-1}}
@@ -399,7 +399,7 @@ h2 { font-size: calc(34px * var(--site-heading-scale)); line-height: 1.15; lette
       <div class="nav-actions">
         <button class="btn btn-outline" id="navLogin">Entrar</button>
         <button class="btn btn-primary" id="navAccess">Ativar acesso <span>↗</span></button>
-        <button class="btn btn-outline" id="themeToggle" type="button" aria-label="Alternar tema">🌙 Tema escuro</button>
+        <button class="btn btn-outline" id="themeToggle" type="button" aria-label="Alternar tema">🌙 Tema escuro</button><a class="btn btn-outline nph-central-link" href="../index.html">Central oficial ↗</a>
       </div>
     </header>
 
@@ -1696,11 +1696,39 @@ end)</textarea>
   });
   $('navAccess').addEventListener('click', goAccess);
   $('themeToggle').addEventListener('click', () => applyTheme($('appRoot').dataset.theme === 'dark' ? 'light' : 'dark'));
-  document.querySelectorAll('[data-home-scroll]').forEach(link => link.addEventListener('click', event => { event.preventDefault(); $(link.dataset.homeScroll).scrollIntoView({behavior:'smooth'}); }));
-  $('brandHome').addEventListener('click', event => { event.preventDefault(); showPage('home'); });
+  function returnToHomeOrDashboard(section) {
+    const user = activeUser && store.users[activeUser];
+    if (user) {
+      if (!hasActiveAccess(user)) { showPage('access'); return; }
+      if (!user.learning) { showAssessment(); return; }
+      renderDashboard();
+      showPage('dashboard');
+      return;
+    }
+    showPage('home');
+    const target = section && $(section);
+    if (target) setTimeout(() => target.scrollIntoView({behavior:'smooth'}), 30);
+  }
+  document.querySelectorAll('[data-home-scroll]').forEach(link => link.addEventListener('click', event => {
+    event.preventDefault();
+    returnToHomeOrDashboard(link.dataset.homeScroll);
+  }));
+  document.addEventListener('click', event => {
+    const link = event.target.closest('.nph-footer-col a[href^="#"]');
+    if (!link) return;
+    const section = link.getAttribute('href').slice(1);
+    if (!['inicio','trilhas','metodo','ferramentas'].includes(section)) return;
+    event.preventDefault();
+    returnToHomeOrDashboard(section);
+  }, true);
+  $('brandHome').addEventListener('click', event => {
+    event.preventDefault();
+    returnToHomeOrDashboard('inicio');
+  });
   document.querySelectorAll('[data-go]').forEach(button => button.addEventListener('click', () => {
     const destination = button.dataset.go;
     if (destination === 'access') { goAccess(); return; }
+    if (destination === 'home') { returnToHomeOrDashboard('inicio'); return; }
     if (destination === 'dashboard' && activeUser) { renderDashboard(); showPage('dashboard'); return; }
     showPage(destination);
   }));
@@ -1906,5 +1934,5 @@ end)</textarea>
   <div class="nph-footer-bottom"><span>© 2026 <strong>NovaPlayHost</strong>. Todos os direitos reservados.</span><span>Contato e suporte: <a href="https://discord.gg/bsYX83YYmt" target="_blank" rel="noopener noreferrer">Discord oficial</a></span><span>Powered by <strong>NovaHost</strong> · Versão <strong>v1.0.0</strong></span></div>
  </div>
 </footer>
-<a class="nph-central-return" href="../index.html" aria-label="Voltar à Central Oficial" style="position:fixed;z-index:999999;top:12px;left:12px;display:inline-block;padding:10px 14px;border-radius:24px;background:#10213b;color:#fff;text-decoration:none;font:700 13px system-ui">← Central oficial</a></body>
+</body>
 </html>
