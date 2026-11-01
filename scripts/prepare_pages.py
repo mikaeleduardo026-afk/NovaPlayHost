@@ -95,7 +95,7 @@ def classify(path: Path) -> str | None:
     except OSError:
         return None
     title_match = re.search(r"<title[^>]*>(.*?)</title>", content, re.I | re.S)
-    title = re.sub(r"\\s+", " ", title_match.group(1)).strip() if title_match else ""
+    title = re.sub(r"\s+", " ", title_match.group(1)).strip() if title_match else ""
     heading_match = re.search(r"<h1[^>]*>(.*?)</h1>", content, re.I | re.S)
     heading = re.sub(r"<[^>]+>", " ", heading_match.group(1)).strip() if heading_match else ""
     identity = f"{title} {heading}".lower()
@@ -134,12 +134,12 @@ def sanitize_email_addresses(page: Path) -> None:
     content = page.read_text("utf-8", errors="ignore")
     original = content
     content = re.sub(
-        r"""(?i)(href\\s*=\\s*["'])mailto:[^"']+(["'])""",
-        r"""\\1https://discord.gg/bsYX83YYmt\\2""",
+        r"""(?i)(href\s*=\s*["'])mailto:[^"']+(["'])""",
+        r"""\1https://discord.gg/bsYX83YYmt\2""",
         content,
     )
     content = re.sub(
-        r"(?i)\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b",
+        r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b",
         "Atendimento pelo Discord",
         content,
     )
@@ -214,7 +214,7 @@ def main() -> None:
         if rel not in {"index.html", "legal.html"}:
             add_footer(page, rel, product_pages)
 
-    email_pattern = re.compile(r"(?i)\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b")
+    email_pattern = re.compile(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b")
     leaked_emails = []
     for page in [p for p in PUBLIC.rglob("*") if p.is_file() and p.suffix.lower() in {".html", ".htm"}]:
         if email_pattern.search(page.read_text("utf-8", errors="ignore")):
