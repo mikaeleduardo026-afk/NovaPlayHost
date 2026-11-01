@@ -127,6 +127,26 @@ def portal(product_pages: dict[str, Path]) -> str:
     return f'''<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#090f1d"><title>NovaPlayHost — Central de Projetos</title><meta name="description" content="Portal oficial dos projetos NovaPlayHost."><style>
 :root{{--bg:#090f1d;--panel:#101b2e;--line:#243653;--text:#edf4ff;--muted:#9aacc7;--accent:#5592ff}}*{{box-sizing:border-box}}body{{margin:0;background:radial-gradient(ellipse at 15% 0%,#18345d 0,transparent 42%),var(--bg);color:var(--text);font:16px/1.55 Inter,system-ui,Segoe UI,sans-serif}}.wrap{{width:min(1120px,calc(100% - 36px));margin:auto}}header{{padding:28px 0;border-bottom:1px solid var(--line)}}.brand{{font-weight:900;letter-spacing:.04em}}.brand span{{color:var(--accent)}}.hero{{padding:72px 0 38px}}.tag{{font-size:11px;letter-spacing:.15em;color:#82b2ff;font-weight:800}}h1{{font-size:clamp(36px,6vw,64px);line-height:1.02;letter-spacing:-.05em;margin:16px 0}}.hero p{{max-width:650px;color:var(--muted);font-size:18px}}.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:16px;padding:20px 0 70px}}.card{{display:flex;flex-direction:column;min-height:210px;padding:24px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,#14233a,#0e1727);color:inherit;text-decoration:none;transition:transform .2s,border-color .2s}}.card:hover{{transform:translateY(-4px);border-color:#5592ff}}.card h2{{margin:18px 0 6px;font-size:22px}}.card p{{margin:0;color:var(--muted);font-size:14px}}.open{{margin-top:auto;padding-top:24px;color:#a8c8ff}}footer{{border-top:1px solid var(--line);padding:28px 0 34px;color:var(--muted);font-size:12px}}footer a{{color:#b9d3ff}}.warning{{margin-top:12px;max-width:900px}}</style></head><body><header><div class="wrap brand">NOVA<span>PLAY</span>HOST</div></header><main class="wrap"><section class="hero"><div class="tag">CENTRAL OFICIAL</div><h1>Seus projetos,<br>em um só lugar.</h1><p>Acesse as plataformas e ferramentas da NovaPlayHost. Cada projeto abre diretamente sua página publicada.</p></section><section class="grid">{''.join(cards)}</section></main><footer><div class="wrap"><b>NovaPlayHost</b> · Powered by NovaHost · v1.0.0<br><a href="./legal.html#termos">Termos de Uso</a> · <a href="./legal.html#privacidade">Privacidade</a> · <a href="./legal.html#reembolso">Reembolso</a> · <a href="./legal.html#cookies">Cookies</a> · <a href="https://discord.gg/bsYX83YYmt" target="_blank" rel="noopener">Discord / Suporte</a><div class="warning">© 2026 NovaPlayHost. Todos os direitos reservados. É proibido plagiar, redistribuir ou comercializar materiais proprietários fora dos canais oficiais. A extração, modificação ou exploração de arquivos exige autorização expressa da NovaPlayHost e dos respectivos titulares dos direitos.</div></div></footer></body></html>'''
 
+def sanitize_email_addresses(page: Path) -> None:
+    """Replace email contact details with the official Discord support channel."""
+    if page.suffix.lower() not in {".html", ".htm"}:
+        return
+    content = page.read_text("utf-8", errors="ignore")
+    original = content
+    content = re.sub(
+        r"""(?i)(href\\s*=\\s*["'])mailto:[^"']+(["'])""",
+        r"""\\1https://discord.gg/bsYX83YYmt\\2""",
+        content,
+    )
+    content = re.sub(
+        r"(?i)\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b",
+        "Atendimento pelo Discord",
+        content,
+    )
+    if content != original:
+        page.write_text(content, encoding="utf-8")
+
+
 def add_footer(page: Path, rel_path: str, product_pages: dict[str, Path]) -> None:
     content = page.read_text("utf-8", errors="ignore")
     if "novaplayhost-shared-footer" in content.lower():
@@ -186,10 +206,22 @@ def main() -> None:
 
     if not product_pages:
         raise RuntimeError("Nenhuma página de projeto reconhecida em site.rar; publicação cancelada.")
-    for page in [p for p in PUBLIC.rglob("*") if p.is_file() and p.suffix.lower() in {".html", ".htm"}]:
+    html_pages = [p for p in PUBLIC.rglob("*") if p.is_file() and p.suffix.lower() in {".html", ".htm"}]
+    for page in html_pages:
+        sanitize_email_addresses(page)
+    for page in html_pages:
         rel = page.relative_to(PUBLIC).as_posix()
         if rel not in {"index.html", "legal.html"}:
             add_footer(page, rel, product_pages)
+
+    email_pattern = re.compile(r"(?i)\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b")
+    leaked_emails = []
+    for page in [p for p in PUBLIC.rglob("*") if p.is_file() and p.suffix.lower() in {".html", ".htm"}]:
+        if email_pattern.search(page.read_text("utf-8", errors="ignore")):
+            leaked_emails.append(page.relative_to(PUBLIC).as_posix())
+    if leaked_emails:
+        raise RuntimeError("E-mails ainda presentes em páginas públicas: " + ", ".join(leaked_emails))
+
     (PUBLIC / ".nojekyll").write_text("", encoding="utf-8")
     (PUBLIC / "index.html").write_text(portal(product_pages), encoding="utf-8")
     print("=== Arquivos publicados ===")
