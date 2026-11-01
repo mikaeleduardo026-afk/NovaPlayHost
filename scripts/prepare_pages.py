@@ -77,7 +77,7 @@ def classify(path: Path) -> str | None:
     title = re.search(r"<title[^>]*>(.*?)</title>", content, re.I | re.S)
     heading = re.search(r"<h1[^>]*>(.*?)</h1>", content, re.I | re.S)
     identity = " ".join(x for x in [
-        re.sub(r"\\s+", " ", title.group(1)) if title else "",
+        re.sub(r"\s+", " ", title.group(1)) if title else "",
         re.sub(r"<[^>]+>", " ", heading.group(1)) if heading else "",
     ]).lower()
     if "mta asset viewer" in identity or "mta:sa asset viewer" in identity:
@@ -104,9 +104,9 @@ def prepare_html_pages(pages: dict[str, Path]) -> None:
         if not page.is_file():
             continue
         content = page.read_text("utf-8", errors="ignore")
-        content = re.sub(r'<a\\b[^>]*href=["\\'][^"\\']*(?:token-generator|gerador-de-tokens)[^"\\']*["\\'][^>]*>[\\s\\S]*?</a>', "", content, flags=re.I)
-        content = re.sub(r'(?i)(href\\s*=\\s*["\\'])mailto:[^"\\']+(["\\'])', r'\\1https://discord.gg/bsYX83YYmt\\2', content)
-        content = re.sub(r"(?i)\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b", "Atendimento pelo Discord", content)
+        content = re.sub(r'<a\b[^>]*href=["\'][^"\']*(?:token-generator|gerador-de-tokens)[^"\']*["\'][^>]*>[\s\S]*?</a>', "", content, flags=re.I)
+        content = re.sub(r'(?i)(href\s*=\s*["\'])mailto:[^"\']+(["\'])', r'\1https://discord.gg/bsYX83YYmt\2', content)
+        content = re.sub(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", "Atendimento pelo Discord", content)
         page.write_text(content, encoding="utf-8")
     for slug, page in pages.items():
         target = page.parent / "legal.html"
